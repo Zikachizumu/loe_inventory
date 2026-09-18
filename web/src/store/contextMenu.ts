@@ -7,7 +7,7 @@ interface ContextMenuState {
     y: number;
   } | null;
   item: SlotWithItem | null;
-  // Bitirim: karakter panelindeki GIYILI ekipman slotu icin (sag tik -> Unequip).
+  // Loe: karakter panelindeki GIYILI ekipman slotu icin (sag tik -> Unequip).
   // item null iken bu doluysa InventoryContext "Unequip" menusu gosterir.
   equipSlot: string | null;
 }

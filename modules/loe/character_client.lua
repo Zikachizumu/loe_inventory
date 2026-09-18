@@ -1,12 +1,12 @@
 --[[
-    Bitirim — ENVANTER <-> PREVIEW MANAGER KOPRUSU
+    Loe — ENVANTER <-> PREVIEW MANAGER KOPRUSU
     ==============================================
     Canli 3B karakter onizlemesinin TUM mantigi artik yeniden kullanilabilir
-    modulde: modules/bitirim/preview_manager.lua (exports API). Bu dosya YALNIZCA
+    modulde: modules/loe/preview_manager.lua (exports API). Bu dosya YALNIZCA
     envanter NUI'sini o API'ye baglar; ikinci bir sistem/skin YOK.
 
-        NUI 'bitirim:charScene'  {open}          -> CreatePreview / DestroyPreview
-        NUI 'bitirim:charRotate' {mode,value}    -> RotatePreview
+        NUI 'loe:charScene'  {open}          -> CreatePreview / DestroyPreview
+        NUI 'loe:charRotate' {mode,value}    -> RotatePreview
         /cam ...                                 -> SetCamera (studio kadraj ince ayar)
 
     Mevcut NUI event isimleri/UI davranisi DEGISMEDI (index.tsx aynen calisir).
@@ -39,18 +39,32 @@ local cam_cfg = { dist = 2.55, side = 0.0, height = 0.05, fov = 42.0, look = 0.3
 -- (kap gorunumleri). Zaten aktifken mod degisirse (karakter<->kap gecisi, envanter
 -- kapanmadan) ONCE yikilir SONRA yeniden kurulur -> CreatePreview'in "zaten aktif"
 -- guard'i yuzunden eski moddan takilip kalinmaz.
-RegisterNUICallback('bitirim:charScene', function(data, cb)
+--
+-- ARAC ICINDE CANLI 3B KARAKTER ACILMAZ (kullanici istegi 2026-09-10): aractayken
+-- "Karakter" sekmesinde soldaki EKIPMAN SLOTLARI (NUI, tamamen ayri) kalir ama
+-- studio sahnesi (klon+kamera) hic kurulmaz. Torpido/bagaj gorunumu
+-- (showCharacter=false) BUNUN DISINDA — kendi mantigiyla (arac arkadan kadraj,
+-- klon gizli) calismaya devam eder.
+RegisterNUICallback('loe:charScene', function(data, cb)
     cb(1)
-    if type(data) == 'table' and data.open then
+    local open = type(data) == 'table' and data.open
+    local showCharacter = type(data) == 'table' and data.showCharacter ~= false
+
+    if open and showCharacter and IsPedInAnyVehicle(PlayerPedId(), false) then
         if Preview:IsPreviewActive() then Preview:DestroyPreview() end
-        Preview:CreatePreview(data.showCharacter ~= false)
+        return
+    end
+
+    if open then
+        if Preview:IsPreviewActive() then Preview:DestroyPreview() end
+        Preview:CreatePreview(showCharacter)
     else
         Preview:DestroyPreview()
     end
 end)
 
 -- Donme: sol/sag (heading) + fareyle surukle. ('top' kaldirildi — kamera sabit.)
-RegisterNUICallback('bitirim:charRotate', function(data, cb)
+RegisterNUICallback('loe:charRotate', function(data, cb)
     cb(1)
     local mode = type(data) == 'table' and data.mode or nil
     if not mode or mode == 'top' then return end
@@ -76,6 +90,6 @@ RegisterCommand('cam', function(_, args)
         cam_cfg[p] = v
         Preview:SetCamera({ [p] = v })
     end
-    print(('^3[bitirim] cam dist=%.2f side=%.2f height=%.2f fov=%.1f look=%.2f backdist=%.2f (aktif:%s)^7')
+    print(('^3[loe] cam dist=%.2f side=%.2f height=%.2f fov=%.1f look=%.2f backdist=%.2f (aktif:%s)^7')
         :format(cam_cfg.dist, cam_cfg.side, cam_cfg.height, cam_cfg.fov, cam_cfg.look, cam_cfg.backdist, tostring(Preview:IsPreviewActive())))
 end, false)

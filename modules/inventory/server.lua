@@ -1069,16 +1069,16 @@ end
 
 exports('SetMetadata', Inventory.SetMetadata)
 
---[[ BITIRIM: canta seviyesine gore KULLANILABILIR slot ust siniri.
+--[[ LOE: canta seviyesine gore KULLANILABILIR slot ust siniri.
      Player envanterinde slotlar 1..(5+seviye*8) aciktir; ustu kilitli. `inv.slots`
      45 KALIR (client 45 slot + kilit gorseli bozulmasin diye), ama OTOMATIK
      yerlestirme (AddItem / giveItem / kraft / pickup) yalniz bu sinira kadar slot
-     secer -> item asla kilitli slota gitmez. `bitirimUsableSlots` yoksa (henuz
+     secer -> item asla kilitli slota gitmez. `loeUsableSlots` yoksa (henuz
      uygulanmadi) tam `inv.slots` kullanilir = FAIL-OPEN (mevcut davranis).
-     Alani `modules/bitirim/server.lua` applyLevel'da yazar. ]]
+     Alani `modules/loe/server.lua` applyLevel'da yazar. ]]
 local function usableSlots(inv)
-    if inv.player and inv.bitirimUsableSlots then
-        return inv.bitirimUsableSlots
+    if inv.player and inv.loeUsableSlots then
+        return inv.loeUsableSlots
     end
     return inv.slots
 end
@@ -1169,7 +1169,7 @@ function Inventory.AddItem(inv, item, count, metadata, slot, cb)
 		local items = inv.items
 		slotMetadata, slotCount = Items.Metadata(inv.id, item, metadata and table.clone(metadata) or {}, count)
 
-		for i = 1, usableSlots(inv) do -- BITIRIM: kilitli slotlara otomatik yerlestirme yok
+		for i = 1, usableSlots(inv) do -- LOE: kilitli slotlara otomatik yerlestirme yok
 			local slotData = items[i]
 
 			if item.stack and slotData ~= nil and slotData.name == item.name and table.matches(slotData.metadata, slotMetadata) then
@@ -1317,7 +1317,7 @@ function Inventory.GetItemSlots(inv, item, metadata, strict)
 	inv = Inventory(inv) --[[@as OxInventory]]
 	if not inv?.slots then return end
 
-	local totalCount, slots, emptySlots = 0, {}, usableSlots(inv) -- BITIRIM: bos slot sayimi kilitli slotlari saymaz
+	local totalCount, slots, emptySlots = 0, {}, usableSlots(inv) -- LOE: bos slot sayimi kilitli slotlari saymaz
 
 	if strict == nil then strict = true end
 	local tablematch = strict and table.matches or table.contains
@@ -2203,7 +2203,7 @@ function Inventory.GetEmptySlot(inv)
 
 	local items = inventory.items
 
-	for i = 1, usableSlots(inventory) do -- BITIRIM: kilitli slot bos slot olarak dondurulmez
+	for i = 1, usableSlots(inventory) do -- LOE: kilitli slot bos slot olarak dondurulmez
 		if not items[i] then
 			return i
 		end
@@ -2225,7 +2225,7 @@ function Inventory.GetSlotForItem(inv, itemName, metadata)
 	local items = inventory.items
 	local emptySlot
 
-	for i = 1, usableSlots(inventory) do -- BITIRIM: kilitli slot secilmez (give/market/kraft)
+	for i = 1, usableSlots(inventory) do -- LOE: kilitli slot secilmez (give/market/kraft)
 		local slotData = items[i]
 
 		if not slotData and not emptySlot then
@@ -2624,6 +2624,10 @@ local function updateWeapon(source, action, value, slot, specialAmmo)
 				value = 0
 			end
 
+			-- Loe: 'ammo' dali mermiyi 0'a dusurdugunde true olur; silah
+			-- asagida, senkrondan ONCE envanterden kaldirilir.
+			local destroyWeapon = false
+
 			if action == 'load' and weapon.metadata.durability > 0 then
 				local ammo = Items(weapon.name).ammoname
 				local diff = value - (weapon.metadata.ammo or 0)
@@ -2633,6 +2637,23 @@ local function updateWeapon(source, action, value, slot, specialAmmo)
 				weapon.metadata.ammo = value
 				weapon.metadata.specialAmmo = specialAmmo
 				weapon.weight = Inventory.SlotWeight(item, weapon)
+			elseif action == 'unload' then
+				--[[ Loe: KILIFA ALINCA SARJORU BOSALT -> mermi envantere geri
+				     doner, silah dolu kalmaz (kullanici istegi). Ammo yigin olarak
+				     eklenir; ozel mermi tipi korunur. Envanter dolarsa (AddItem
+				     basarisiz) mermi silahta kalir, kaybolmaz. ]]
+				local ammo = Items(weapon.name).ammoname
+				local count = weapon.metadata.ammo or 0
+
+				if ammo and count > 0 then
+					local ammoMeta = weapon.metadata.specialAmmo and { type = weapon.metadata.specialAmmo } or nil
+
+					if Inventory.AddItem(inventory, ammo, count, ammoMeta) then
+						weapon.metadata.ammo = 0
+						weapon.metadata.specialAmmo = nil
+						weapon.weight = Inventory.SlotWeight(item, weapon)
+					end
+				end
 			elseif action == 'throw' then
 				if not Inventory.RemoveItem(inventory, weapon.name, 1, weapon.metadata, weapon.slot) then return end
 			elseif action == 'component' then
@@ -2659,6 +2680,16 @@ local function updateWeapon(source, action, value, slot, specialAmmo)
 					weapon.metadata.ammo = value
 					weapon.metadata.durability = weapon.metadata.durability - durability
 					weapon.weight = Inventory.SlotWeight(item, weapon)
+
+					-- Loe: mermisi biten silah cantadan silinir (bkz.
+					-- init.lua -> shared.destroyemptyweapon). Kosul SADECE bu
+					-- dalda: buraya girmek icin mermi DOLU iken AZALMIS olmasi
+					-- gerekir, yani hic yuklenmemis (ammo = 0) bir silah
+					-- silinmez. Yangin sondurucu/benzin bidonu ust dalda
+					-- islenir, oraya hic ugramaz.
+					if shared.destroyemptyweapon and value <= 0 and item.ammoname then
+						destroyWeapon = true
+					end
 				end
 			elseif action == 'melee' then
 				weapon.metadata.durability = weapon.metadata.durability - ((Items(weapon.name).durability or 1) * value)
@@ -2671,6 +2702,23 @@ local function updateWeapon(source, action, value, slot, specialAmmo)
             if item.hash == `WEAPON_PETROLCAN` then
                 weapon.weight = Inventory.SlotWeight(item, weapon)
             end
+
+			-- Loe: mermisi biten silahi envanterden kaldir ve oyuncunun
+			-- elinden al. 'throw' ile ayni desen: RemoveItem slotlari kendisi
+			-- senkronlar, o yuzden asagidaki syncSlotsWithPlayer'a DUSULMEZ
+			-- (silinmis slotu tekrar yollamak eski item'i geri gosterirdi).
+			if destroyWeapon then
+				if Inventory.RemoveItem(inventory, weapon.name, 1, weapon.metadata, weapon.slot) then
+					if inventory.weapon == weapon.slot then
+						inventory.weapon = nil
+						TriggerClientEvent('ox_inventory:disarm', inventory.id)
+					end
+
+					if server.syncInventory then server.syncInventory(inventory) end
+
+					return true
+				end
+			end
 
 			if action ~= 'throw' then
 				inventory:syncSlotsWithPlayer({

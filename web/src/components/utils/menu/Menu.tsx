@@ -210,7 +210,7 @@ export const MenuComponent = React.forwardRef<HTMLButtonElement, MenuProps & Rea
         >
           <FloatingList elementsRef={elementsRef} labelsRef={labelsRef}>
             {isMounted && (
-              // Bitirim (2026-08-12): FloatingOverlay (position:fixed tam-ekran
+              // Loe (2026-08-12): FloatingOverlay (position:fixed tam-ekran
               // sarmalayici, sadece scroll-kilit icin) KALDIRILDI — FiveM'in CEF
               // NUI'sinde ic ice fixed katmanlarla ilgili bir tuhaflik yuzunden
               // menu z-index'e RAGMEN slotlarin ARKASINDA kaliyordu (normal

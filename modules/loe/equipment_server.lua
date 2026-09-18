@@ -1,7 +1,7 @@
 --[[
-    Bitirim — EKIPMAN / KIYAFET BACKEND (kalici giyili itemler + ped uygulama)
+    Loe — EKIPMAN / KIYAFET BACKEND (kalici giyili itemler + ped uygulama)
     --------------------------------------------------------------------------
-    TEK ekipman sistemi. Doğruluk kaynağı: `bitirim_equipment` DB tablosu
+    TEK ekipman sistemi. Doğruluk kaynağı: `loe_equipment` DB tablosu
     (her karakter icin tek satir, JSON). Giyili her parca bir SLOT tutar
     (hat/mask/jacket/...). Bu tablo hem dunya ped'ini surer (client uygular)
     hem de ileride 3D onizlemeyi besleyecek (ayni veri).
@@ -13,14 +13,14 @@
       - CIKARMA (unequip): panelden -> item envantere IADE, slottan silinir,
         DB guncellenir, client ped'i eski haline dondurur.
 
-    Slot + gorunum eslemesi: data/bitirim_clothing.lua (TEK KAYNAK).
-    Desen: modules/bitirim/server.lua (canta backend) ile ayni yapi taslagi.
+    Slot + gorunum eslemesi: data/loe_clothing.lua (TEK KAYNAK).
+    Desen: modules/loe/server.lua (canta backend) ile ayni yapi taslagi.
     ADDITIVE + pcall guard: qbx/MySQL hazir degilse boot kirilmaz.
 ]]
 
 local Inventory = require 'modules.inventory.server'
 local Items = require 'modules.items.server'
-local clothing = lib.load('data.bitirim_clothing')
+local clothing = lib.load('data.loe_clothing')
 
 -- citizenid -> { slot = { item, drawable, texture } }  (bellek onbellegi)
 local equipCache = {}
@@ -28,7 +28,7 @@ local equipCache = {}
 --- Tablo (yoksa olustur).
 CreateThread(function()
     MySQL.query([[
-        CREATE TABLE IF NOT EXISTS `bitirim_equipment` (
+        CREATE TABLE IF NOT EXISTS `loe_equipment` (
             `citizenid` VARCHAR(64) NOT NULL,
             `data` LONGTEXT NOT NULL,
             PRIMARY KEY (`citizenid`)
@@ -57,7 +57,7 @@ local function loadEquipment(source)
     if equipCache[cid] ~= nil then return equipCache[cid] end
 
     local tbl = {}
-    local row = MySQL.single.await('SELECT `data` FROM `bitirim_equipment` WHERE `citizenid` = ?', { cid })
+    local row = MySQL.single.await('SELECT `data` FROM `loe_equipment` WHERE `citizenid` = ?', { cid })
     if row and row.data then
         local ok, decoded = pcall(json.decode, row.data)
         if ok and type(decoded) == 'table' then tbl = decoded end
@@ -76,7 +76,7 @@ local function saveEquipment(cid)
     local tbl = equipCache[cid] or {}
     local encoded = json.encode(tbl)
     MySQL.query(
-        'INSERT INTO `bitirim_equipment` (`citizenid`, `data`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `data` = ?',
+        'INSERT INTO `loe_equipment` (`citizenid`, `data`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `data` = ?',
         { cid, encoded, encoded }
     )
 end
@@ -85,7 +85,7 @@ end
 --- slot -> { item, label, image, wear }. `wear` gorunum tablosudur
 --- ({ slot, drawable, texture } veya { slot, male, female }); client bunu
 --- oyuncunun CINSIYETINE gore uygular. `wear` yoksa (eski satir) client
---- data/bitirim_clothing.items map'inden coz. label/image panel gosterimi icin.
+--- data/loe_clothing.items map'inden coz. label/image panel gosterimi icin.
 local function pushToClient(source)
     local tbl = loadEquipment(source)
     local payload = {}
@@ -98,8 +98,8 @@ local function pushToClient(source)
             wear = entry.wear,
         }
     end
-    print(('[bitirim_equipment] pushToClient -> source=%s slots=%s'):format(source, json.encode(payload)))
-    TriggerClientEvent('bitirim:client:equipment', source, payload)
+    print(('[loe_equipment] pushToClient -> source=%s slots=%s'):format(source, json.encode(payload)))
+    TriggerClientEvent('loe:client:equipment', source, payload)
 end
 
 --- Bir DB entry'sini (giyili parca) ENVANTERE iade et. apparel ise metadata ile,
@@ -143,8 +143,8 @@ end
 --- Donus: entry = { item, label?, image?, imageurl?, rarity?, wear = { slot, ... } }
 ---
 --- image vs imageurl: `image` ox'un kendi web/images klasorundeki BASE ADIdir
---- (or. 'mask_ski'); `imageurl` ise tam bir URL'dir (or. bitirim_clothing'in
---- urettigi nui://bitirim_clothing/web/images/....png). Ikisi de panele ayni
+--- (or. 'mask_ski'); `imageurl` ise tam bir URL'dir (or. loe_clothing'in
+--- urettigi nui://loe_clothing/web/images/....png). Ikisi de panele ayni
 --- yoldan gider, arayuz once imageurl'e bakar.
 local function resolvePiece(itemName, metadata)
     -- 1) Metadata-guдумlu (apparel): gorunum item metadata'sinda.
@@ -160,7 +160,7 @@ local function resolvePiece(itemName, metadata)
         }
     end
 
-    -- 1b) ESKI bitirim_clothing magaza item'i ('clothing'): gorunum metadata'nin
+    -- 1b) ESKI loe_clothing magaza item'i ('clothing'): gorunum metadata'nin
     -- KOKUNDE durur (component|prop + drawable + texture), `wear` yoktur. Yeni
     -- satislar 'apparel' + metadata.wear ile geliyor; bu dal yalnizca oyuncularin
     -- cantasinda kalmis eski parcalar icin. GTA id'sinden panel slotu bulunur.
@@ -301,13 +301,13 @@ CreateThread(function()
             end)
         end)
         if not ok then
-            print(('[bitirim] %s kullanilabilir item kaydedilemedi: %s'):format(name, tostring(err)))
+            print(('[loe] %s kullanilabilir item kaydedilemedi: %s'):format(name, tostring(err)))
         end
     end
 end)
 
 -- Panelden gelen cikarma istegi (client NUI -> server).
-RegisterNetEvent('bitirim:server:unequip', function(slot, toSlot)
+RegisterNetEvent('loe:server:unequip', function(slot, toSlot)
     local source = source
     if type(slot) ~= 'string' then return end
     unequip(source, slot, toSlot)
@@ -316,7 +316,7 @@ end)
 -- HIZLI GIYME yolu: cift-tik / surukle-giy bunu cagirir. ox'un `useItem` akisini
 -- (200ms callback + 500ms usingItem kilidi) ATLAR -> aninda giyer. Client sadece
 -- slot no yollar; sunucu o slottaki item'i OTORITER okuyup equip eder (guvenli).
-RegisterNetEvent('bitirim:server:equipSlot', function(slot)
+RegisterNetEvent('loe:server:equipSlot', function(slot)
     local source = source
     slot = tonumber(slot)
     if not slot then return end
@@ -329,14 +329,14 @@ RegisterNetEvent('bitirim:server:equipSlot', function(slot)
 end)
 
 -- Envanter acilinca giyili ekipmani iste (relog/timing emniyeti).
-lib.callback.register('bitirim:server:getEquipment', function(source)
+lib.callback.register('loe:server:getEquipment', function(source)
     pushToClient(source)
     return true
 end)
 
-exports('BitirimGetEquipment', function(source) return loadEquipment(source) end)
-exports('BitirimEquip', function(source, itemName) return equip(source, itemName, nil) end)
-exports('BitirimUnequip', function(source, slot) return unequip(source, slot) end)
+exports('LoeGetEquipment', function(source) return loadEquipment(source) end)
+exports('LoeEquip', function(source, itemName) return equip(source, itemName, nil) end)
+exports('LoeUnequip', function(source, slot) return unequip(source, slot) end)
 
 --- Oyuncu envanteri hazir oldugunda (ox ile ayni state bag) ekipmani uygula.
 --- illenium temel skini yukledikten SONRA uygulanmali diye kisa gecikme
@@ -359,10 +359,10 @@ AddEventHandler('qbx_core:server:playerLoggedOut', function(source)
 end)
 
 --- Admin/test: /setkiyafet <itemName>  (kendine giy) | /setkiyafet clear <slot>
---- ACE: bitirim.admin (konsol serbest degil — source gerekli).
+--- ACE: loe.admin (konsol serbest degil — source gerekli).
 RegisterCommand('setkiyafet', function(source, args)
     if source == 0 then return print('setkiyafet oyuncudan calistirilmali') end
-    if not IsPlayerAceAllowed(source, 'bitirim.admin') then
+    if not IsPlayerAceAllowed(source, 'loe.admin') then
         return notify(source, 'error', 'Yetkisiz.')
     end
 
@@ -386,7 +386,7 @@ end, false)
 --- Oyuncu use ile giyer. Dukkansiz uctan uca test icin.
 RegisterCommand('kiyafetver', function(source, args)
     if source == 0 then return print('kiyafetver oyuncudan calistirilmali') end
-    if not IsPlayerAceAllowed(source, 'bitirim.admin') then
+    if not IsPlayerAceAllowed(source, 'loe.admin') then
         return notify(source, 'error', 'Yetkisiz.')
     end
 

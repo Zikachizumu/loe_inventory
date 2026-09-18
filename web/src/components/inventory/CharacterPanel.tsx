@@ -2,8 +2,16 @@ import React, { useCallback, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { selectBagLevel } from '../../store/backpack';
-import { selectEquipment, selectEquippedWeapon, selectClothingMap, EquipItem } from '../../store/equipment';
+import {
+  selectEquipment,
+  selectEquippedWeapon,
+  selectEquipAmmoDisplay,
+  selectClothingMap,
+  selectHighlightSlot,
+  EquipItem,
+} from '../../store/equipment';
 import { selectLeftInventory } from '../../store/inventory';
+import { selectInVehicle } from '../../store/vehicle';
 import { openContextMenu } from '../../store/contextMenu';
 import { Items } from '../../store/items';
 import { fetchNui } from '../../utils/fetchNui';
@@ -26,10 +34,10 @@ import {
   IconTshirt,
   IconVest,
   IconWatch,
-} from './BitirimIcons';
+} from './LoeIcons';
 
 /**
- * Bitirim karakter paneli.
+ * Loe karakter paneli.
  *
  * Slotlar NUMARALI (sag ustte kucuk rozet) — karisiklik olmasin diye.
  * ÇANTA slotu (key='bag') GERCEK: takili canta seviyesine gore bag_lvN.png
@@ -74,6 +82,7 @@ interface EquipSlotProps {
   Icon: React.FC<{ size?: number }>;
   slotNo: number;
   equipped?: EquipItem;
+  highlighted?: boolean;
   onUnequip: (slot: string) => void;
   onContext: (slotKey: string, event: React.MouseEvent<HTMLDivElement>) => void;
   canEquipHere: (slotKey: string, source: DragSource) => boolean;
@@ -93,6 +102,7 @@ const EquipSlot: React.FC<EquipSlotProps> = ({
   Icon,
   slotNo,
   equipped,
+  highlighted,
   onUnequip,
   onContext,
   canEquipHere,
@@ -105,7 +115,7 @@ const EquipSlot: React.FC<EquipSlotProps> = ({
   // .png ekler; legacy named item'da (or. 'armour') item ADINDAN coz -> getItemUrl,
   // Items[name].image'i (ox'un cozdugu tam nui:// yolu) dogrudan doner. (Onceki kod
   // Items[name].image'i TEKRAR getItemUrl'e verip yolu bozuyordu -> slotta gorsel yoktu.)
-  // imageurl TAM bir URL'dir (bitirim_clothing magazasi boyle veriyor) -> oldugu
+  // imageurl TAM bir URL'dir (loe_clothing magazasi boyle veriyor) -> oldugu
   // gibi kullanilir; getItemUrl'e verilirse basina imagepath eklenip bozulur.
   const equipUrl = equipped?.imageurl
     ? equipped.imageurl
@@ -164,6 +174,7 @@ const EquipSlot: React.FC<EquipSlotProps> = ({
       className={
         'bx-eq-slot' +
         (equipped ? ' has-item' : '') +
+        (highlighted ? ' bx-eq-highlight' : '') +
         (canDrop ? ' bx-eq-droppable' : '') +
         (isOver && canDrop ? ' bx-eq-dropover' : '')
       }
@@ -182,18 +193,158 @@ const EquipSlot: React.FC<EquipSlotProps> = ({
   );
 };
 
+// ox'ta silah item adlari her zaman WEAPON_ ile baslar (data/weapons.lua). SILAH
+// slotuna surukle-birak icin "bu bir silah mi" testi bu kadar.
+const isWeaponName = (name?: string) => !!name && name.startsWith('WEAPON_');
+
+/**
+ * SILAH slotu (15) — kusanili silahi gosterir.
+ *
+ * Silah item'i envanterden SILINMEZ: ox'un silah akisi (mermi sayaci, dayaniklilik,
+ * parcalar, sarjor doldurma) o envanter slotundaki item uzerinden yurur. Bunun
+ * yerine item gridde ve makro satirinda GIZLENIR (store/equipment.ts ->
+ * selectEquipHiddenSlots), oyuncuya "silah slota gecti" gorunur. Kilifa alinca
+ * item kendi yerinde tekrar gorunur.
+ *
+ * Kusan   : envanterden silahi bu slota surukle-birak.
+ * Kilifa  : slota tikla ya da slottan envantere surukle.
+ * Ikisi de ox'un `useItem` yolundan gecer — ayni slotu tekrar use etmek ox'ta
+ * silahi kilifa alir (client.lua useSlot, `weaponSlot == data.slot` dali).
+ */
+const WeaponSlot: React.FC<{ slotNo: number; Icon: React.FC<{ size?: number }> }> = ({ slotNo, Icon }) => {
+  const equippedWeapon = useAppSelector(selectEquippedWeapon);
+  const wName = equippedWeapon?.name;
+  const wSlot = equippedWeapon?.slot;
+  const wUrl = wName ? getItemUrl(wName) : undefined;
+
+  const toggleWeapon = useCallback(() => {
+    if (typeof wSlot === 'number') fetchNui('useItem', wSlot).catch(() => {});
+  }, [wSlot]);
+
+  const [{ canDrop, isOver }, drop] = useDrop<DragSource, void, { canDrop: boolean; isOver: boolean }>(
+    () => ({
+      accept: 'SLOT',
+      collect: (monitor) => ({ canDrop: monitor.canDrop(), isOver: monitor.isOver() }),
+      canDrop: (source) => source.inventory === 'player' && isWeaponName(source.item.name),
+      drop: (source) => {
+        fetchNui('useItem', source.item.slot).catch(() => {});
+      },
+    }),
+    []
+  );
+
+  // Slottan envantere surukle = kilifa al. InventorySlot'un EQUIP dali
+  // `slot === 'weapon'` payload'ini taniyip use'a cevirir.
+  const [{ isDragging }, drag] = useDrag<any, void, { isDragging: boolean }>(
+    () => ({
+      type: 'EQUIP',
+      collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+      // `item` + `image` SART: DragPreview (imlecte akan gorsel) yalniz `data.item`
+      // doluyken cizer ve `data.image`'i arka plan yapar. Bunlar olmadan kusanili
+      // silah/bicak surukleyince gorsel imleci takip etmiyordu ve birakinca item
+      // "sicriyordu". Cantadaki normal item ve kiyafet slotu bunlari zaten veriyor.
+      item: () =>
+        typeof wSlot === 'number'
+          ? {
+              slot: 'weapon',
+              weaponSlot: wSlot,
+              weaponName: wName,
+              item: { name: wName, slot: wSlot },
+              image: wUrl ? `url(${wUrl})` : undefined,
+            }
+          : null,
+      canDrag: () => typeof wSlot === 'number',
+    }),
+    [wSlot]
+  );
+
+  return (
+    <div
+      ref={(element) => {
+        if (element) drag(drop(element));
+      }}
+      className={
+        'bx-eq-slot' +
+        (wUrl ? ' has-item' : '') +
+        (canDrop ? ' bx-eq-droppable' : '') +
+        (isOver && canDrop ? ' bx-eq-dropover' : '')
+      }
+      title={equippedWeapon?.label ? `Silah — ${equippedWeapon.label} (çıkarmak için tıkla)` : 'Silah — boş'}
+      onClick={wUrl ? toggleWeapon : undefined}
+      style={{
+        ...(wUrl ? { backgroundImage: `url(${wUrl})` } : undefined),
+        cursor: wUrl ? 'pointer' : undefined,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+    >
+      <span className="bx-eq-num">{slotNo}</span>
+      {!wUrl && <Icon size={32} />}
+    </div>
+  );
+};
+
+/**
+ * MERMI slotu (16) — kusanili silahin mermi yigini (adet rozetiyle).
+ *
+ * Silah slotu gibi: yigin envanterde durur ama gridde gizlenir; silah kilifa
+ * alininca kendi yerinde geri gorunur.
+ *
+ * SLOTA TIKLAMAK SARJORU DOLDURUR. Bu SART: yigin gridde gizlendigi icin artik
+ * cift tiklanamiyor (gizli slotlarda kullanma kapali), yani sarjoru doldurmanin
+ * baska yolu kalmiyordu — oyuncu cantasinda mermi olmasina ragmen ates
+ * edemiyordu. Doldurma ox'un kendi `useItem` yolundan gecer.
+ */
+const AmmoSlot: React.FC<{ slotNo: number; Icon: React.FC<{ size?: number }> }> = ({ slotNo, Icon }) => {
+  const ammo = useAppSelector(selectEquipAmmoDisplay);
+  const hasAmmo = !!ammo && ammo.total > 0;
+  const url = hasAmmo ? getItemUrl(ammo!.name) : undefined;
+  const label = ammo ? Items[ammo.name]?.label ?? ammo.name : undefined;
+
+  // Yedek yığın varsa tıklama şarjöre doldurur. Kuşanınca otomatik dolum
+  // yaptığımız için genelde yedek olmaz (mermi zaten şarjörde) -> tıklama pasif.
+  const reload = useCallback(() => {
+    if (ammo?.spareSlot !== undefined) fetchNui('useItem', ammo.spareSlot).catch(() => {});
+  }, [ammo?.spareSlot]);
+
+  const canReload = ammo?.spareSlot !== undefined;
+
+  return (
+    <div
+      className={url ? 'bx-eq-slot has-item' : 'bx-eq-slot'}
+      title={
+        hasAmmo
+          ? `Mermi — ${label} (${ammo!.total})${canReload ? ' — şarjöre basmak için tıkla' : ''}`
+          : 'Mermi — boş'
+      }
+      onClick={canReload ? reload : undefined}
+      style={{
+        ...(url ? { backgroundImage: `url(${url})` } : undefined),
+        cursor: canReload ? 'pointer' : undefined,
+      }}
+    >
+      <span className="bx-eq-num">{slotNo}</span>
+      {hasAmmo ? <span className="bx-eq-count">{ammo!.total}</span> : <Icon size={32} />}
+    </div>
+  );
+};
+
 const CharacterPanel: React.FC = () => {
   const bagLevel = useAppSelector(selectBagLevel);
   const equipment = useAppSelector(selectEquipment);
-  const equippedWeapon = useAppSelector(selectEquippedWeapon);
   const clothingMap = useAppSelector(selectClothingMap);
+  const highlightSlot = useAppSelector(selectHighlightSlot);
   const leftInventory = useAppSelector(selectLeftInventory);
+  // Araç içindeyken canli 3B karakter alani GOSTERILMEZ (kullanici istegi
+  // 2026-09-10): studio sahnesi aractayken hic acilmaz (character_client.lua),
+  // burada da orta SEFFAF pencereyi kaldirip sadece iki ekipman slotu sutununu
+  // birakiriz -> ortada "karaktersiz bos cam" kalmaz.
+  const inVehicle = useAppSelector(selectInVehicle);
   const dispatch = useAppDispatch();
   let slotNo = 0; // tum slotlara sirali numara (1..N)
 
   // Dolu bir ekipman slotuna tiklayinca (veya envantere surukleyince) cikar.
   const handleUnequip = useCallback((slot: string) => {
-    fetchNui('bitirim:unequip', { slot }).catch(() => {});
+    fetchNui('loe:unequip', { slot }).catch(() => {});
   }, []);
 
   // Giyili slota SAG TIK -> baglam menusu (Unequip). InventoryContext gosterir.
@@ -235,7 +386,7 @@ const CharacterPanel: React.FC = () => {
       if (source.inventory !== 'player') return;
       const src = sourceItem(source);
       if (src && targetSlotOf(src) === slotKey) {
-        fetchNui('bitirim:equip', { slot: src.slot }).catch(() => {});
+        fetchNui('loe:equip', { slot: src.slot }).catch(() => {});
       }
     },
     [sourceItem, targetSlotOf]
@@ -251,7 +402,7 @@ const CharacterPanel: React.FC = () => {
     const dx = e.clientX - dragX.current;
     if (dx !== 0) {
       dragX.current = e.clientX;
-      fetchNui('bitirim:charRotate', { mode: 'drag', value: dx }).catch(() => {});
+      fetchNui('loe:charRotate', { mode: 'drag', value: dx }).catch(() => {});
     }
   };
   const onViewUp = () => {
@@ -261,23 +412,10 @@ const CharacterPanel: React.FC = () => {
   // Tek slot render (canta + silah = ayri gorsel sistem, digerleri EquipSlot).
   const renderSlot = ({ key, label, Icon }: SlotDef) => {
     slotNo += 1;
-    // SILAH slotu: kusanili silahi gosterir (client Lua setEquippedWeapon). Kusan/degis
-    // -> gorsel guncellenir, holstered -> bosalir. Surukle-giy YOK (ox silah akisi).
-    if (key === 'weapon') {
-      const wName = equippedWeapon?.name;
-      const wUrl = wName ? getItemUrl(wName) : undefined;
-      return (
-        <div
-          className={wUrl ? 'bx-eq-slot has-item' : 'bx-eq-slot'}
-          key={key}
-          title={equippedWeapon?.label ? `Silah — ${equippedWeapon.label}` : 'Silah — boş'}
-          style={wUrl ? { backgroundImage: `url(${wUrl})` } : undefined}
-        >
-          <span className="bx-eq-num">{slotNo}</span>
-          {!wUrl && <Icon size={32} />}
-        </div>
-      );
-    }
+    // SILAH (15) ve MERMI (16): kusanilinca ikisi de envanterden gizlenip burada
+    // gorunur. Kendi bilesenleri var (surukle-birak/tikla kancalari icin).
+    if (key === 'weapon') return <WeaponSlot key={key} slotNo={slotNo} Icon={Icon} />;
+    if (key === 'ammo') return <AmmoSlot key={key} slotNo={slotNo} Icon={Icon} />;
     if (key === 'bag') {
       const bagUrl = bagLevel > 0 ? getItemUrl(`bag_lv${bagLevel}`) : undefined;
       return (
@@ -300,6 +438,7 @@ const CharacterPanel: React.FC = () => {
         Icon={Icon}
         slotNo={slotNo}
         equipped={equipment[key]}
+        highlighted={highlightSlot === key}
         onUnequip={handleUnequip}
         onContext={handleContext}
         canEquipHere={canEquipHere}
@@ -310,21 +449,24 @@ const CharacterPanel: React.FC = () => {
 
   return (
     <div className="bx-panel bx-character">
-      <p className="bx-panel-title">Karakter</p>
+      {/* Baslik yazisi ("Karakter") kaldirildi (kullanici istegi 2026-09-10). */}
 
-      {/* 3 sutun: sol slotlar | canli karakter (seffaf) | sag slotlar */}
-      <div className="bx-char-body">
+      {/* Yayan: 3 sutun (sol slotlar | canli karakter seffaf | sag slotlar).
+          Araçta: orta pencere YOK -> iki slot sutunu ortalanir (bx-char-slots-only). */}
+      <div className={`bx-char-body${inVehicle ? ' bx-char-slots-only' : ''}`}>
         <div className="bx-eq-col">{LEFT_SLOTS.map(renderSlot)}</div>
 
-        {/* Orta: ped OYUN tarafinda arkada render edilir; burasi SEFFAF penceredir.
-            Dondurme: fareyle surukle (butonlar kaldirildi). */}
-        <div
-          className="bx-char-view"
-          onMouseDown={onViewDown}
-          onMouseMove={onViewMove}
-          onMouseUp={onViewUp}
-          onMouseLeave={onViewUp}
-        />
+        {!inVehicle && (
+          /* Orta: ped OYUN tarafinda arkada render edilir; burasi SEFFAF penceredir.
+             Dondurme: fareyle surukle (butonlar kaldirildi). */
+          <div
+            className="bx-char-view"
+            onMouseDown={onViewDown}
+            onMouseMove={onViewMove}
+            onMouseUp={onViewUp}
+            onMouseLeave={onViewUp}
+          />
+        )}
 
         <div className="bx-eq-col">{RIGHT_SLOTS.map(renderSlot)}</div>
       </div>

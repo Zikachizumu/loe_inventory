@@ -2,16 +2,16 @@ import React from 'react';
 import { useDrop } from 'react-dnd';
 import { DragSource } from '../../typings';
 import { onGive } from '../../dnd/onGive';
-import { IconSend } from './BitirimIcons';
+import { IconSend } from './LoeIcons';
 
 /**
- * Bitirim "Sürükle & Ver" bari.
+ * Loe "Sürükle & Ver" bari.
  *
  * Gercek bir birakma hedefi: envanterden buraya surukledigin item
  * ox'un mevcut `onGive` akisina gider (yanindaki oyuncuya verilir).
  *
  * NOT: mockup'taki "yakindaki oyuncu ID + isim / Stranger" secicisi
- * bitirim_stranger entegrasyonuyla birlikte gelecek. O gelene kadar
+ * loe_stranger entegrasyonuyla birlikte gelecek. O gelene kadar
  * burada sahte oyuncu kartlari GOSTERILMEZ.
  */
 const GiveBar: React.FC = () => {

@@ -10,12 +10,15 @@ import {
   setEquippedWeapon,
   setEquipment,
   setClothingMap,
+  setHighlightSlot,
+  selectClothingMap,
   EquipmentMap,
   EquippedWeapon,
   ClothingMap,
 } from '../../store/equipment';
 import { setBagLevel } from '../../store/backpack';
 import { setCash } from '../../store/cash';
+import { setVehicleGlovebox, setInVehicle } from '../../store/vehicle';
 import { useExitListener } from '../../hooks/useExitListener';
 import { fetchNui } from '../../utils/fetchNui';
 import type { Inventory as InventoryProps } from '../../typings';
@@ -26,7 +29,7 @@ import InventoryContext from './InventoryContext';
 import { closeContextMenu } from '../../store/contextMenu';
 import { closeSplit } from '../../store/split';
 import Fade from '../utils/transitions/Fade';
-import BitirimTopBar from './BitirimTopBar';
+import LoeTopBar from './LoeTopBar';
 import CharacterPanel from './CharacterPanel';
 import PlayerPanel from './PlayerPanel';
 import GiveBar from './GiveBar';
@@ -34,7 +37,7 @@ import DropPanel from './DropPanel';
 import SplitDialog from './SplitDialog';
 
 /**
- * Bitirim envanter penceresi.
+ * Loe envanter penceresi.
  *
  * Yerlesim (onaylanmis mockup):
  *   ust bar
@@ -43,13 +46,15 @@ import SplitDialog from './SplitDialog';
  *   alt satir : kullanim talimatlari + "Surukle & Ver" bari
  *
  * Eski InventoryControl (adet/Use/Give/Close) kaldirildi; yerine kullanim
- * talimatlari (BitirimHints) kondu. Kaldirmak guvenli: sunucu ver/al/at
+ * talimatlari (LoeHints) kondu. Kaldirmak guvenli: sunucu ver/al/at
  * miktarini math.max(1,...) ile kirpiyor, yarim bolme SHIFT ile calisiyor.
  */
 const Inventory: React.FC = () => {
   const [inventoryVisible, setInventoryVisible] = useState(false);
   const dispatch = useAppDispatch();
   const rightInventory = useAppSelector(selectRightInventory);
+  const tooltip = useAppSelector((state) => state.tooltip);
+  const clothingMap = useAppSelector(selectClothingMap);
 
   // Sag envanterin durumu. Bos id = hicbir sey acik degil.
   // 'drop' (yerdeki item) ayri ele alinir: 5x5 grid + altta karakter statlari.
@@ -62,7 +67,7 @@ const Inventory: React.FC = () => {
     if (!inventoryVisible) dispatch(closeSplit());
   }, [inventoryVisible, dispatch]);
 
-  // Bitirim: canli studio sahnesi (klon+kamera+backdrop). Karakter panelinde VE
+  // Loe: canli studio sahnesi (klon+kamera+backdrop). Karakter panelinde VE
   // kap gorunumlerinde (torpido/bagaj/motel/otel — hasContainer) acik; drop'ta
   // KAPALI. Kapta klon GIZLI kalir (showCharacter:false, sadece backdrop gorunur) —
   // kullanici karakterin SADECE karakter panelinde gorunmesini istiyor, ama arka
@@ -71,10 +76,10 @@ const Inventory: React.FC = () => {
   useEffect(() => {
     const sceneOpen = inventoryVisible && !isDrop;
     const showCharacter = !isDrop && !hasContainer;
-    fetchNui('bitirim:charScene', { open: sceneOpen, showCharacter }).catch(() => {});
+    fetchNui('loe:charScene', { open: sceneOpen, showCharacter }).catch(() => {});
   }, [inventoryVisible, isDrop, hasContainer]);
 
-  // Bitirim: STUDIO KAMERA kadraj kontrolleri (ok tuslari + Numpad1/2) 2026-08-30'da
+  // Loe: STUDIO KAMERA kadraj kontrolleri (ok tuslari + Numpad1/2) 2026-08-30'da
   // KALDIRILDI. Kullanici begendigi kadraji buldu; degerler artik preview_manager.lua
   // icindeki cfg'de SABIT (camSide/camHeight/fov). Karakteri sag/sola cevirme fare ile
   // surukleyerek (char-view uzerinde) DEVAM EDIYOR.
@@ -87,7 +92,7 @@ const Inventory: React.FC = () => {
   });
   useExitListener(setInventoryVisible);
 
-  // Bitirim: tooltip artik TIKLA-ac (kalici). Envanter her kapanista (ESC / dis /
+  // Loe: tooltip artik TIKLA-ac (kalici). Envanter her kapanista (ESC / dis /
   // setInventoryVisible false) acik tooltip'i kapat -> tekrar acinca eski item'in
   // bilgi penceresi asili kalmasin.
   useEffect(() => {
@@ -96,6 +101,18 @@ const Inventory: React.FC = () => {
       dispatch(closeContextMenu());
     }
   }, [inventoryVisible, dispatch]);
+
+  // Loe: acik tooltip OYUNCU envanterindeki GIYILEBILIR bir item'e aitse, o item'in
+  // HEDEF karakter slotu parlar (metadata.wear.slot ?? clothingMap[name]). Tooltip
+  // kapaninca / giyilemez item'de / farkli item'de otomatik guncellenir.
+  useEffect(() => {
+    if (tooltip.open && tooltip.item && tooltip.inventoryType === 'player') {
+      const target = (tooltip.item.metadata as any)?.wear?.slot ?? clothingMap[tooltip.item.name];
+      dispatch(setHighlightSlot(target ?? null));
+    } else {
+      dispatch(setHighlightSlot(null));
+    }
+  }, [tooltip.open, tooltip.item, tooltip.inventoryType, clothingMap, dispatch]);
 
   useNuiEvent<{
     leftInventory?: InventoryProps;
@@ -111,31 +128,40 @@ const Inventory: React.FC = () => {
     dispatch(setAdditionalMetadata(data));
   });
 
-  // Bitirim: karakter panelindeki durum barlari (client Lua'dan gercek veri)
+  // Loe: karakter panelindeki durum barlari (client Lua'dan gercek veri)
   useNuiEvent<PlayerStatus>('setPlayerStatus', (data) => dispatch(setPlayerStatus(data)));
 
-  // Bitirim: o an kusanili slot (sag tik menusunde Use/Unequip etiketi icin)
+  // Loe: o an kusanili slot (sag tik menusunde Use/Unequip etiketi icin)
   useNuiEvent<number | null>('setEquippedSlot', (data) => dispatch(setEquippedSlot(data)));
 
-  // Bitirim: kusanili silah -> karakter panelindeki SILAH slotu gosterimi
+  // Loe: kusanili silah -> karakter panelindeki SILAH slotu gosterimi
   useNuiEvent<EquippedWeapon | false | null>('setEquippedWeapon', (data) => dispatch(setEquippedWeapon(data)));
 
-  // Bitirim: giyili kiyafet/ekipman (slot -> gorunum). Karakter panelini doldurur.
+  // Loe: giyili kiyafet/ekipman (slot -> gorunum). Karakter panelini doldurur.
   useNuiEvent<EquipmentMap>('setEquipment', (data) => dispatch(setEquipment(data)));
 
-  // Bitirim: legacy kiyafet item -> slot haritasi (surukle-giy highlight'i icin)
+  // Loe: legacy kiyafet item -> slot haritasi (surukle-giy highlight'i icin)
   useNuiEvent<ClothingMap>('setClothingMap', (data) => dispatch(setClothingMap(data)));
 
-  // Bitirim: canta seviyesi -> tema rengi (<html data-lv>) + acik/kilitli slotlar
+  // Loe: canta seviyesi -> tema rengi (<html data-lv>) + acik/kilitli slotlar
   useNuiEvent<number>('setBagLevel', (level) => {
     dispatch(setBagLevel(level));
     document.documentElement.dataset.lv = String(Math.max(0, Math.min(5, Math.floor(level || 0))));
   });
 
-  // Bitirim: nakit (qbx cash) -> ust bar. Nakit artik envanter item'i degil.
+  // Loe: nakit (qbx cash) -> ust bar. Nakit artik envanter item'i degil.
   useNuiEvent<number>('setCash', (amount) => dispatch(setCash(amount)));
 
-  // Bitirim: OTOMATIK OLCEKLEME — pencereyi ekrana sigacak/dolduracak sekilde
+  // Loe: aractayken torpido erisilebilir mi -> ust bardaki Karakter/Torpido
+  // sekmesi. Envanter HER ACILISTA (canta ya da torpido) client Lua'dan gelir.
+  useNuiEvent<boolean>('setVehicleGlovebox', (available) => dispatch(setVehicleGlovebox(available)));
+
+  // Loe: oyuncu araçta mı -> Karakter panelinde canli 3B karakter alanini
+  // kaldir (kullanici istegi 2026-09-10). Studio sahnesi de aractayken acilmaz
+  // (bkz. modules/loe/character_client.lua).
+  useNuiEvent<boolean>('setInVehicle', (value) => dispatch(setInVehicle(value)));
+
+  // Loe: OTOMATIK OLCEKLEME — pencereyi ekrana sigacak/dolduracak sekilde
   // olcekle (tam ekran his). Dogal boyutu olcup min(vw,vh) orani ile scale eder.
   const windowRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(1);
@@ -169,7 +195,7 @@ const Inventory: React.FC = () => {
               (karakter/depo/bagaj/torpido/envanter arasinda ayrim YOK). */}
           <div className="bx-scrim" />
           <div className="bx-window" ref={windowRef}>
-            <BitirimTopBar />
+            <LoeTopBar />
 
             {/* 2x2 grid: satir1 = ana kutular (esit yukseklik),
                 satir2 = alt barlar (esit yukseklik). align-items:stretch her
@@ -178,23 +204,29 @@ const Inventory: React.FC = () => {
               {isDrop ? (
                 <DropPanel />
               ) : hasContainer ? (
-                <div className="bx-panel bx-container">
+                // Loe: trunk (bagaj) / glovebox (torpido) icin ek sinif ->
+                // index.scss bunlara OZEL boyut/hizalama uygular (bkz. .bx-trunk,
+                // .bx-glovebox). Diger kap tipleri (stash/motel/otel/market)
+                // sadece genel .bx-container kurallarini kullanir.
+                <div
+                  className={`bx-panel bx-container${rightInventory.type === 'trunk' ? ' bx-trunk' : ''}${rightInventory.type === 'glovebox' ? ' bx-glovebox' : ''}`}
+                >
                   <RightInventory />
                 </div>
               ) : (
                 <CharacterPanel />
               )}
               <PlayerPanel />
-              {/* Bitirim: Kullanim talimatlari kaldirildi. Alt-sol hucre = statlar
-                  (Surukle&Ver ile ayni satir -> ayni yukseklik). Drop modunda
-                  DropPanel kendi statini gosterir, burasi bos. */}
-              {isDrop ? (
-                <div />
-              ) : (
-                <div className="bx-statsbar">
-                  <CharacterStats />
-                </div>
-              )}
+              {/* Loe: Kullanim talimatlari kaldirildi. Alt-sol hucre = statlar,
+                  Surukle&Ver ile AYNI satirda -> ayni yukseklige gerilir ve ikisi de
+                  kendi icinde dikeyde ortalanir, yani statlar HER MODDA (karakter/
+                  torpido/drop) Ver kutusunun TAM ORTASINA hizali kalir (kullanici
+                  istegi 2026-09-10; eskiden drop modunda statlar panelin KENDI icinde
+                  ayri bir blokta duruyordu ve Ver kutusuyla hicbir zaman hizali
+                  olmuyordu). */}
+              <div className="bx-statsbar">
+                <CharacterStats />
+              </div>
               <GiveBar />
             </div>
           </div>

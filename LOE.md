@@ -1,4 +1,4 @@
-# Bitirim Inventory
+# Loe Inventory
 
 **ox_inventory v2.47.9** tabanlı özel envanter forku — **Qbox** sunucusu için.
 
@@ -20,12 +20,12 @@ değil **fork** yapıldı — hem `web/` (arayüz) hem Lua tarafında özgürlü
 |---|---|
 | Framework | Qbox (`qbx_core`, `ox_lib`, `oxmysql`) |
 | Kıyafet/görünüm | `illenium-appearance` |
-| Tanışma/kimlik | `bitirim_stranger` (yakın oyuncu + Stranger/isim etiketi) |
+| Tanışma/kimlik | `loe_stranger` (yakın oyuncu + Stranger/isim etiketi) |
 | UI | React + Vite + TypeScript (Bun ile derlenir) |
 
 ## ⚠️ Resource adı `ox_inventory` OLMAK ZORUNDA
 
-Repo adı `bitirim_inventory`, ama **sunucuda dağıtılan klasörün adı `ox_inventory`** olmalı
+Repo adı `loe_inventory`, ama **sunucuda dağıtılan klasörün adı `ox_inventory`** olmalı
 ve `fxmanifest.lua` içindeki `name` / `version` alanları değiştirilmemeli.
 
 Bunu yeniden adlandırmayı denedik: resource `bitirim_inventory` yapıldı ve yerine tüm export
@@ -102,7 +102,7 @@ ardından txAdmin Live Console'da `restart ox_inventory`.
 - **Faz 1** — Sunucuda çalışır hale getirme (isim/sürüm uyumu, `web/build` dağıtımı) ✅
 - **Faz 2** — Sağ panel reskin: grid + hotbar + ağırlık + context menü (Kullan/Ayır/At) + tooltip; koyu/neon tema, 5 seviyeli çanta renkleri
 - **Faz 3** — Sol panel: statlar (CAN/ZIRH/AÇLIK/SUSUZLUK) + işlevsel equip slotları (zırh+silah+çanta+maske) + sağ tık giy/çıkar + illenium köprüsü *(C yaklaşımı)*
-- **Faz 4** — "Ver" barı + `bitirim_stranger` yakın-oyuncu seçici (ID + isim / Stranger)
+- **Faz 4** — "Ver" barı + `loe_stranger` yakın-oyuncu seçici (ID + isim / Stranger)
 - **Faz 5** — Kozmetik kıyafet-as-item (tam katalog) + çanta seviye/upgrade sistemi
 
 Tasarım referansı: onaylanmış mockup (koyu + seviye rengi tema, sol Karakter / sağ Envanter,

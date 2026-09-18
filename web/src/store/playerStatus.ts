@@ -2,10 +2,10 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '.';
 
 /**
- * Bitirim — karakter panelindeki durum barlari (CAN / ZIRH / ACLIK / SUSUZLUK).
+ * Loe — karakter panelindeki durum barlari (CAN / ZIRH / ACLIK / SUSUZLUK).
  *
  * Veri client Lua tarafindan `setPlayerStatus` NUI mesajiyla gelir
- * (modules/bitirim/client.lua). Veri gelmeden once `null` kalir ve panel
+ * (modules/loe/client.lua). Veri gelmeden once `null` kalir ve panel
  * durum bloğunu hic gostermez — uydurma deger gosterilmez.
  */
 export type PlayerStatus = {

@@ -11,7 +11,7 @@
 //   yeterli genis bbox (-26..26, bsRadius 45, lodDist 500) -> culling/streaming sorunu
 //   olmaz. Farkli boyutta bir prop icin bu degerleri asagida elle degistir.
 //
-// Ornek (bitirim_inventory backdrop renkli varyantlari icin kullanildi, 2026-08-12):
+// Ornek (loe_inventory backdrop renkli varyantlari icin kullanildi, 2026-08-12):
 //   dotnet run -- "C:\...\stream\bitirim_props.ytyp" bitirim_backdrop_lv1,bitirim_backdrop_lv2
 
 using CodeWalker.GameFiles;

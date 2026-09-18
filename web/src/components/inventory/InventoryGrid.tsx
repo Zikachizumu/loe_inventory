@@ -5,14 +5,14 @@ import InventorySlot from './InventorySlot';
 import { getTotalWeight } from '../../helpers';
 import { useAppSelector } from '../../store';
 import { useIntersection } from '../../hooks/useIntersection';
-import { IconLock } from './BitirimIcons';
+import { IconLock } from './LoeIcons';
 
-// Bitirim: kaplar (bagaj 36, torpido 5) ilk sayfada tamamen gorunsun diye
+// Loe: kaplar (bagaj 36, torpido 5) ilk sayfada tamamen gorunsun diye
 // buyutuldu; daha buyuk stash'ler hala kaydirmayla sayfalanir.
 const PAGE_SIZE = 48;
 
 /**
- * Bitirim eklentileri:
+ * Loe eklentileri:
  *  - skipSlots : bastaki N slotu atla (oyuncu envanterinde 1-5 makro sutununda
  *    gosterildigi icin gridde tekrar edilmezler).
  *  - maxSlots  : gridde gosterilecek AZAMI slot sayisi. Oyuncu gridi 8x5=40 ile

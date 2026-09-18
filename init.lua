@@ -15,7 +15,7 @@ end
 shared = {
     resource = GetCurrentResourceName(),
     framework = GetConvar('inventory:framework', 'esx'),
-    -- Bitirim: tasarim 42 slot (7 Fast Access makro + 35 grid, grid 7 sutun x 5 sira).
+    -- Loe: tasarim 42 slot (7 Fast Access makro + 35 grid, grid 7 sutun x 5 sira).
     -- server.cfg'de `setr inventory:slots` varsa onu da 42 YAPIN, yoksa gridde
     -- gosterilmeyen slotlar ortaya cikar / kilit kaymalari olur.
     playerslots = GetConvarInt('inventory:slots', 42),
@@ -25,10 +25,29 @@ shared = {
     networkdumpsters = GetConvarBool('inventory:networkdumpsters', false)
 }
 
--- Bitirim: yere dusen item (drop) 5x5 = 25 slot (arayuzde 5 sutun).
-shared.dropslots = GetConvarInt('inventory:dropslots', 25)
--- Bitirim: yere atma agirlik siniri 999.999 KG (pratikte sinirsiz).
+-- Loe: yere dusen item (drop) 7x8 = 56 slot (arayuzde 7 sutun, +1 satir
+-- kullanici istegi 2026-09-10). Sutun/satir sayisi web/src/index.scss ->
+-- `:root { --panel-cols/--panel-rows }` ile ESLESMELI; ikisi ayri kalirsa
+-- grid ya eksik satirla ya da bos alanla cizilir. AYNI olcu (--panel-*)
+-- Karakter/Torpido panellerinin de SABIT pencere boyutu referansidir.
+shared.dropslots = GetConvarInt('inventory:dropslots', 56)
+-- Loe: yere atma agirlik siniri 999.999 KG (pratikte sinirsiz).
 shared.dropweight = GetConvarInt('inventory:dropweight', 999999000)
+
+--[[
+    Loe: MERMISI BITEN SILAH CANTADA KALIR (silinmez).
+
+    Once (2026-09-09) tek-kullanimlik silah istenmisti: mermi 0'a inince silah
+    da siliniyordu. Karar degisti (kullanici, tamir NPC'si gelecek): silah artik
+    dayaniligi/mermisi 0 olsa bile envanterden SILINMEZ. Mermi bitince yalnizca
+    ates edemez (client.lua atis kilidi), silah cantada durur; ileride tamir
+    NPC'sinde dayaniklilik yenilenecek.
+
+    false iken: updateWeapon (action == 'ammo') mermi 0'a dusse de silahi
+    kaldirmaz. true'ya cekilirse eski "mermi bitince silah da gider" davranisi
+    geri gelir (bkz. modules/inventory/server.lua -> destroyWeapon dali).
+]]
+shared.destroyemptyweapon = GetConvarBool('inventory:destroyemptyweapon', false)
 
 do
     if type(shared.police) == 'string' then
@@ -90,16 +109,24 @@ else
     PlayerData = {}
     client = {
         player = lib.player:new(-1),
-        autoreload = GetConvarBool('inventory:autoreload', false),
+        -- Loe: sarjor bosalinca envanterdeki mermiyi otomatik yukle. Silahi
+        -- kusanir kusanmaz da (useSlot -> data.weapon dali) ilk dolum yapilir,
+        -- boylece "silah + mermi = ates edebilir" olur; oyuncunun ayrica mermiye
+        -- basip doldurmasi gerekmez. Mermi bitince silah ates edemez (silinmez).
+        autoreload = GetConvarBool('inventory:autoreload', true),
         screenblur = GetConvarBool('inventory:screenblur', true),
         keys = json.decode(GetConvar('inventory:keys', '')) or { 'F2', 'K', 'TAB' },
         enablekeys = json.decode(GetConvar('inventory:enablekeys', '[249]')),
         aimedfiring = GetConvarBool('inventory:aimedfiring', false),
         giveplayerlist = GetConvarBool('inventory:giveplayerlist', false),
         weaponanims = GetConvarBool('inventory:weaponanims', true),
-        itemnotify = GetConvarBool('inventory:itemnotify', true),
-        weaponnotify = GetConvarBool('inventory:weaponnotify', true),
-        -- Bitirim: sabit 'ox_inventory' yerine gercek kaynak adini calisma aninda kullan.
+        -- Loe: envanter etkilesim bildirimleri KAPALI (kullanici istegi).
+        -- itemnotify -> "Added/Removed" vb.; weaponnotify -> "Equipped/Holstered".
+        -- Ikisi de Utils.ItemNotify'dan gecer; itemnotify=false hepsini susturur,
+        -- weaponnotify=false ek guvence (kusan/kilifa ItemNotify'i hic cagirmaz).
+        itemnotify = GetConvarBool('inventory:itemnotify', false),
+        weaponnotify = GetConvarBool('inventory:weaponnotify', false),
+        -- Loe: sabit 'ox_inventory' yerine gercek kaynak adini calisma aninda kullan.
         -- Su an ayni sonucu verir, ama klasor adi degisirse ikonlar kirilmaz.
         imagepath = GetConvar('inventory:imagepath', ('nui://%s/web/images'):format(shared.resource)),
         dropprops = GetConvarBool('inventory:dropprops', false),

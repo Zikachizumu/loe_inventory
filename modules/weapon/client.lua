@@ -78,7 +78,22 @@ function Weapon.Equip(item, data, noWeaponAnim)
 	SetPedCurrentWeaponVisible(playerPed, true, false, false, false)
 	SetWeaponsNoAutoswap(true)
 	SetPedAmmo(playerPed, data.hash, ammo)
-	SetTimeout(0, function() RefillAmmoInstantly(playerPed) end)
+
+	--[[
+		Loe: KUSANMA ANINDA PED'IN MERMISI ITEM'DEKINE ESITLENIR.
+
+		RefillAmmoInstantly'nin isi sarjoru YEDEKTEN doldurmak; yedek 0 iken
+		hicbir sey vermemesi gerekir. Enhanced'de bunun ped'e mermi verdigi
+		goruldu (envanterde mermi yokken silah ates ediyordu). Refill'den
+		SONRA ped'in toplam mermisi item'deki degere geri cekiliyor, boylece
+		hangi yapida olursak olalim silahta item'de yazandan fazla mermi
+		olamaz. Mermi 0 ise refill hic cagrilmiyor.
+	]]
+	SetTimeout(0, function()
+		if not DoesEntityExist(playerPed) then return end
+		if ammo > 0 then RefillAmmoInstantly(playerPed) end
+		SetPedAmmo(playerPed, data.hash, ammo)
+	end)
 
 	if item.group == `GROUP_PETROLCAN` or item.group == `GROUP_FIREEXTINGUISHER` then
 		item.metadata.ammo = item.metadata.durability
@@ -97,6 +112,16 @@ end
 function Weapon.Disarm(currentWeapon, noAnim)
 	if currentWeapon?.timer then
 		currentWeapon.timer = nil
+
+		--[[ Loe: KILIFA ALINCA SARJORDEKI MERMIYI ENVANTERE GERI KOY.
+		     Silah dolu kalmasin -> yeniden kusaninca (auto-load) tekrar yuklenir.
+		     Yalniz mermi kullanan normal silahlarda; atilabilir/bicak ve yangin
+		     sondurucu/benzin bidonu HARIC. Bos sarjorde (ammo 0) bir sey yapmaz. ]]
+		if currentWeapon.ammo and not currentWeapon.throwable and not currentWeapon.melee
+			and currentWeapon.group ~= `GROUP_PETROLCAN` and currentWeapon.group ~= `GROUP_FIREEXTINGUISHER`
+			and (currentWeapon.metadata.ammo or 0) > 0 then
+			TriggerServerEvent('ox_inventory:updateWeapon', 'unload', currentWeapon.metadata.ammo, currentWeapon.slot)
+		end
 
         TriggerServerEvent('ox_inventory:updateWeapon')
 		SetPedAmmo(cache.ped, currentWeapon.hash, 0)

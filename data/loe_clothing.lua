@@ -1,8 +1,8 @@
 --[[
-    Bitirim — KIYAFET / EKIPMAN eslemesi (TEK KAYNAK)
+    Loe — KIYAFET / EKIPMAN eslemesi (TEK KAYNAK)
     -------------------------------------------------
     Bu dosya hem server (equipment_server.lua) hem client (equipment_client.lua)
-    tarafindan `lib.load('data.bitirim_clothing')` ile okunur. Amac: "hangi panel
+    tarafindan `lib.load('data.loe_clothing')` ile okunur. Amac: "hangi panel
     slotu -> hangi GTA hedefi" ve "hangi item -> hangi slot + gorunum" bilgisini
     TEK yerde tutmak (dunya karakteri ve ileride 3D onizleme ayni veriyi kullanir).
 
@@ -23,7 +23,7 @@
     gecersizse sessizce atlanir (kirilmaz).
 
     Ozel slotlar (bu tabloda YOK, ayri yonetilir):
-      bag    -> canta seviye sistemi (modules/bitirim/server.lua) — DOKUNULMAZ
+      bag    -> canta seviye sistemi (modules/loe/server.lua) — DOKUNULMAZ
       weapon -> ox getCurrentWeapon (kusanili silah) — sadece gosterim
       ammo   -> gorunum hedefi yok
 ]]
@@ -56,21 +56,44 @@ local slots = {
     (component'lerde -1/None yoktur, taban bir drawable secilmek zorundadir).
 
     Kaynak: illenium-appearance `Config.InitialPlayerClothes` (erkek=kadin ayni).
-    bitirim_clothing/config/config.lua -> `Config.Underwear` ile SENKRON.
+    loe_clothing/config/config.lua -> `Config.Underwear` ile SENKRON.
     Burada YAZMAYAN component slotu 0'a duser (maske/zincir/yelek = "yok").
     Prop slotlari bu tabloda yoktur: bos prop = ClearPedProp.
 ]]
+-- CINSIYETE_GORE_UNDERWEAR
+--[[
+    Tablo artik CINSIYETE gore ayrilmis. Eskiden tek tabloydu ve erkek
+    degerleri kadina da uygulaniyordu; kaynak illenium'du ve orada erkek =
+    kadin tanimlanmisti, ama bu bir varsayimdi (bkz. shared/constants.lua
+    icindeki uyari: "kadin icin ayri dogrulanmis set YOK").
+
+    Kadin degerleri kullanicinin istegi, oyunun kadin ped'inde dogrulandi:
+        jacket 33 -> 9 doku, texture 3 gecerli   (hipster / jbib_002)
+        pants  56 -> 6 doku, texture 5 gecerli   (apt01   / lowr_010)
+    Bunlar taban oldugu icin CIKARILAMAZ: hicbir item giyili degilken
+    karakterde bunlar kalir.
+
+    gloves / shoes / tshirt kadin degerleri HALA OLCULMEDI; erkekle ayni
+    birakildi. Degistirmeden once oyunda bak.
+]]
 local underwear = {
-    gloves = { drawable = 15, texture = 0 },  -- component 3  — ciplak kol
-    pants  = { drawable = 21, texture = 0 },  -- component 4  — boxer / kulot
-    -- component 6 — YALIN AYAK. drawable 0 DEGIL: 0 bu ped'de damali bir
-    -- ayakkabi (oyunda gorulup duzeltildi). 34 illenium'un
-    -- Config.InitialPlayerClothes'undaki degerdir (yeni karakterin ic camasiri
-    -- gorunumu). Yine de ayakkabili gorunuyorsa: illenium dukkaninda yalin
-    -- ayagi sec, /kiyafetbak yaz, F8'deki shoes drawable'ini buraya gecir.
-    shoes  = { drawable = 34, texture = 0 },
-    tshirt = { drawable = 15, texture = 0 },  -- component 8  — yok
-    jacket = { drawable = 15, texture = 0 },  -- component 11 — yok
+    male = {
+        gloves = { drawable = 15, texture = 0 },  -- component 3  — ciplak kol
+        pants  = { drawable = 21, texture = 0 },  -- component 4  — boxer
+        -- component 6 — YALIN AYAK. drawable 0 DEGIL: 0 bu ped'de damali bir
+        -- ayakkabi (oyunda gorulup duzeltildi). 34 illenium'un
+        -- Config.InitialPlayerClothes'undaki degerdir.
+        shoes  = { drawable = 34, texture = 0 },
+        tshirt = { drawable = 15, texture = 0 },  -- component 8  — yok
+        jacket = { drawable = 15, texture = 0 },  -- component 11 — yok
+    },
+    female = {
+        gloves = { drawable = 15, texture = 0 },  -- OLCULMEDI (erkekle ayni)
+        pants  = { drawable = 56, texture = 5 },  -- mavi dantel kulot
+        shoes  = { drawable = 34, texture = 0 },  -- OLCULMEDI (erkekle ayni)
+        tshirt = { drawable = 15, texture = 0 },  -- OLCULMEDI (erkekle ayni)
+        jacket = { drawable = 33, texture = 3 },  -- leopar baskili bustiyer
+    },
 }
 
 --[[
@@ -125,7 +148,7 @@ local autoMatchArms = true
     ayri: erkegin degeri kadinda baska bir parcaya denk gelebilir. Gecersiz bir
     deger sessizce atlanir (kol ciplak kalir, kirilmaz).
 
-    bitirim_clothing/config/config.lua -> Config.DefaultArms ile SENKRON.
+    loe_clothing/config/config.lua -> Config.DefaultArms ile SENKRON.
 ]]
 local defaultArms = {
     -- 135: oyun icinde olculdu (/bc_kol).

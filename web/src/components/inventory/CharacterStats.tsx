@@ -1,10 +1,10 @@
 import React from 'react';
 import { useAppSelector } from '../../store';
 import { selectPlayerStatus } from '../../store/playerStatus';
-import { IconDrop, IconFood, IconHeart, IconShield } from './BitirimIcons';
+import { IconDrop, IconFood, IconHeart, IconShield } from './LoeIcons';
 
 /**
- * Bitirim — CAN / ZIRH / AÇLIK / SUSUZLUK stat blogu.
+ * Loe — CAN / ZIRH / AÇLIK / SUSUZLUK stat blogu.
  * Hem karakter panelinde hem drop panelinde (altta) kullanilir.
  * Yalnizca client Lua gercek veri gonderdiginde gorunur.
  */

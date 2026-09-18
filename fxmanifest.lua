@@ -5,7 +5,7 @@ game 'gta5'
 --[[
     DIKKAT — 'name' ve 'version' DEGISTIRILMEMELI.
 
-    Bu kaynak Bitirim'in ozel envanteridir ama resource adi 'ox_inventory'
+    Bu kaynak Loe'in ozel envanteridir ama resource adi 'ox_inventory'
     OLMAK ZORUNDA. 'bitirim_inventory' olarak yeniden adlandirip yerine
     export yonlendiren bir kopru koymayi denedik ve sunucu acilmadi:
 
@@ -22,10 +22,10 @@ game 'gta5'
     (on-surum eki semver siralamasini bozar).
 ]]
 name 'ox_inventory'
-author 'Bitirim (fork of Overextended ox_inventory)'
+author 'Loe (fork of Overextended ox_inventory)'
 version '2.47.9'
-repository 'https://github.com/Zikachizumo/bitirim_inventory'
-description 'Bitirim envanteri — ox_inventory 2.47.9 tabanli fork (Qbox)'
+repository 'https://github.com/Zikachizumo/loe_inventory'
+description 'Loe envanteri — ox_inventory 2.47.9 tabanli fork (Qbox)'
 
 dependencies {
     '/server:6116',
@@ -45,32 +45,32 @@ ox_libs {
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'init.lua',
-    -- Bitirim: canta seviyesi backend (kalici seviye + agirlik siniri)
-    'modules/bitirim/server.lua',
-    -- Bitirim: ekipman/kiyafet backend (kalici giyili itemler + ped uygulama)
-    'modules/bitirim/equipment_server.lua',
+    -- Loe: canta seviyesi backend (kalici seviye + agirlik siniri)
+    'modules/loe/server.lua',
+    -- Loe: ekipman/kiyafet backend (kalici giyili itemler + ped uygulama)
+    'modules/loe/equipment_server.lua',
 }
 
 client_scripts {
     'init.lua',
-    -- Bitirim: karakter panelindeki durum barlarini besler (bagimsiz calisir)
-    'modules/bitirim/client.lua',
-    -- Bitirim: giyili ekipmani ped'e uygular + panele yollar + unequip
-    'modules/bitirim/equipment_client.lua',
-    -- Bitirim: YENIDEN KULLANILABILIR canli karakter onizleme modulu (klon +
+    -- Loe: karakter panelindeki durum barlarini besler (bagimsiz calisir)
+    'modules/loe/client.lua',
+    -- Loe: giyili ekipmani ped'e uygular + panele yollar + unequip
+    'modules/loe/equipment_client.lua',
+    -- Loe: YENIDEN KULLANILABILIR canli karakter onizleme modulu (klon +
     -- kamera + canli aynalama + idle). Export API; character_client'ten ONCE.
-    'modules/bitirim/preview_manager.lua',
-    -- Bitirim: envanter <-> PreviewManager koprusu (NUI olaylari + /cam)
-    'modules/bitirim/character_client.lua',
+    'modules/loe/preview_manager.lua',
+    -- Loe: envanter <-> PreviewManager koprusu (NUI olaylari + /cam)
+    'modules/loe/character_client.lua',
 }
 
 ui_page 'web/build/index.html'
 
--- Bitirim: envanter arka plani icin ozel prop archetype'i (hei_mph_cntl2_glass01'i
--- spawn edilebilir yapar). Binary .ytyp CodeWalker ile uretilip stream/'e konur;
--- kaynak + adimlar: stream/README.md ve docs/props/hei_mph_cntl2_glass01.ytyp.xml.
+-- Loe: envanter arka plani icin ozel prop archetype'i (hei_mph_cntl2_glass01'i
+-- spawn edilebilir yapar). Binary .ytyp CodeWalker ile uretilip stream_enhanced/'e konur;
+-- kaynak + adimlar: stream_enhanced/README.md ve docs/props/hei_mph_cntl2_glass01.ytyp.xml.
 -- Dosya yoksa acilista zararsiz bir stream uyarisi cikar; dosya eklenince kaybolur.
-data_file 'DLC_ITYP_REQUEST' 'stream/bitirim_props.ytyp'
+data_file 'DLC_ITYP_REQUEST' 'stream_enhanced/bitirim_props.ytyp'
 
 files {
     'client.lua',

@@ -1,24 +1,20 @@
 import React from 'react';
 import RightInventory from './RightInventory';
-import CharacterStats from './CharacterStats';
 
 /**
- * Bitirim — yere dusen item (drop) paneli.
- * Sol hucrede: 5x5 drop gridi (ust) + CAN/ZIRH/AÇLIK/SUSUZLUK statlari (alt).
- * Boylece drop acikken karakter statlari kaybolmaz (kullanici istegi).
- * Grid 5 sutun `.bx-drop` CSS'iyle; drop slot sayisi sunucuda 25 (init.lua).
+ * Loe — yere dusen item (drop) paneli.
+ *
+ * CAN/ZIRH/AÇLIK/SUSUZLUK statlari ARTIK burada DEGIL — alt-sol hucrede
+ * (Sürükle & Ver kutusuyla AYNI satirda) gosteriliyor (bkz. index.tsx), boylece
+ * drop acikken de statlar Ver kutusunun DIKEY ORTASINA hizali kalir (kullanici
+ * istegi 2026-09-10; onceki hali panelin KENDI icinde ayri bir blok olarak
+ * duruyordu ve Ver kutusuyla hicbir zaman hizali OLMUYORDU). Grid 7 sutun
+ * `.bx-drop` CSS'iyle; drop slot sayisi sunucuda init.lua -> shared.dropslots.
  */
 const DropPanel: React.FC = () => (
   <div className="bx-panel bx-drop">
-    {/* Temiz baslik (plaka/ID + KG YOK). Envanter panelinin basligiyla ayni
-        yukseklikte -> drop gridi ile envanter gridinin siralari hizali olur. */}
-    <div className="bx-inv-head">
-      <p className="bx-panel-title">Yere Atılanlar</p>
-    </div>
+    {/* Baslik yazisi ("Yere Atılanlar") kaldirildi (kullanici istegi 2026-09-10). */}
     <RightInventory />
-    <div className="bx-drop-stats">
-      <CharacterStats />
-    </div>
   </div>
 );
 

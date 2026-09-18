@@ -6,13 +6,13 @@ import { useAppSelector } from '../../store';
 import { selectLeftInventory } from '../../store/inventory';
 import { selectBagLevel, unlockedGridSlots, BAG_CAP_KG } from '../../store/backpack';
 import { getTotalWeight } from '../../helpers';
-import { IconBackpack, IconWeight } from './BitirimIcons';
+import { IconBackpack, IconWeight } from './LoeIcons';
 
 const HOTBAR_SLOTS = 7; // Fast Access (makro) slotlari
 const GRID_SLOTS = 35; // 7 sutun x 5 satir (Backpack) — son 5 slot kaldirildi
 
 /**
- * Bitirim sag panel — oyuncunun kendi envanteri.
+ * Loe sag panel — oyuncunun kendi envanteri.
  *
  * Yerlesim:
  *   baslik (etiket + agirlik bari)      ← tam genislik
@@ -38,8 +38,8 @@ const PlayerPanel: React.FC = () => {
   return (
     <div className="bx-panel bx-inventory">
       <div className="bx-inv-head">
-        <p className="bx-panel-title">Envanter</p>
-        {/* Agirlik bari, kullanilan canta seviyesinin KG kapasitesine gore.
+        {/* Baslik yazisi ("Envanter") kaldirildi (kullanici istegi 2026-09-10).
+            Agirlik bari, kullanilan canta seviyesinin KG kapasitesine gore.
             (Sunucu tarafi SetMaxWeight backend'de baglaninca gercek sinir da bu olur.) */}
         <div className="bx-weight">
           <span className="bx-weight-lab">

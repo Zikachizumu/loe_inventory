@@ -3,7 +3,7 @@ import type { RootState } from '.';
 import { SlotWithItem } from '../typings';
 
 /**
- * Bitirim — "Divide" (yigin bolme) diyalogu durumu.
+ * Loe — "Divide" (yigin bolme) diyalogu durumu.
  * Sag tik menusunde Divide'a basilinca acilir; item + adet secilir.
  */
 const initialState: { item: SlotWithItem | null } = { item: null };

@@ -5,6 +5,7 @@ local Inventory = require 'modules.inventory.server'
 local TriggerEventHooks = require 'modules.hooks.server'
 local Shops = {}
 local locations = shared.target and 'targets' or 'locations'
+local QBX = shared.framework == 'qbx' and exports.qbx_core or nil
 
 ---@class OxShopItem
 ---@field slot number
@@ -172,7 +173,14 @@ lib.callback.register('ox_inventory:openShop', function(source, data)
 end)
 
 local function canAffordItem(inv, currency, price)
-	local canAfford = price >= 0 and Inventory.GetItemCount(inv, currency) >= price
+	local canAfford
+
+	if currency == 'money' and QBX then
+		local player = QBX:GetPlayer(inv.id)
+		canAfford = price >= 0 and player and (player.Functions.GetMoney('cash') or 0) >= price
+	else
+		canAfford = price >= 0 and Inventory.GetItemCount(inv, currency) >= price
+	end
 
 	return canAfford or {
 		type = 'error',
@@ -181,6 +189,11 @@ local function canAffordItem(inv, currency, price)
 end
 
 local function removeCurrency(inv, currency, price)
+	if currency == 'money' and QBX then
+		local player = QBX:GetPlayer(inv.id)
+		return player and player.Functions.RemoveMoney('cash', price, 'Purchased shop item')
+	end
+
 	Inventory.RemoveItem(inv, currency, price)
 end
 

@@ -1,5 +1,5 @@
 --[[
-    Bitirim — karakter panelindeki durum barlari
+    Loe — karakter panelindeki durum barlari
     -------------------------------------------
     Envanter aciklen CAN / ZIRH / ACLIK / SUSUZLUK degerlerini NUI'ye gonderir.
     Arayuz tarafinda store/playerStatus.ts bunu dinler; veri gelmezse panel
@@ -19,12 +19,12 @@ local IDLE_INTERVAL = 1000
     komutu: /cantatest <1-5>. NUI'ye setBagLevel gonderir (renk + kilitli
     slotlar). Backend baglaninca bu komut kaldirilacak.
 -------------------------------------------------------------------------------]]
--- Gercek seviye: server 'bitirim:client:bagLevel' ile gonderir (DB'den).
+-- Gercek seviye: server 'loe:client:bagLevel' ile gonderir (DB'den).
 -- Varsayilan 0 (cantasiz). /cantatest sadece GORSEL testtir (sunucuyu degistirmez).
 local currentBagLevel = 0
 local requestedFromServer = false
 
-RegisterNetEvent('bitirim:client:bagLevel', function(level)
+RegisterNetEvent('loe:client:bagLevel', function(level)
     level = tonumber(level) or 0
     currentBagLevel = level
     if IsNuiFocused() then
@@ -120,9 +120,37 @@ local function equippedWeapon()
     return weapon
 end
 
+--- Kusanili silah payload'ini panele gonderir (setEquippedSlot + setEquippedWeapon).
+local function pushEquippedWeapon(weapon)
+    local wslot = weapon and weapon.slot or nil
+    SendNUIMessage({ action = 'setEquippedSlot', data = wslot })
+    SendNUIMessage({
+        action = 'setEquippedWeapon',
+        data = weapon
+            and { name = weapon.name, label = weapon.label, slot = weapon.slot, ammo = weapon.ammo, mag = weapon.metadata and weapon.metadata.ammo or 0 }
+            or false,
+    })
+end
+
+--[[
+    Loe: kusanili silah DEGISINCE karakter panelini ANINDA guncelle.
+
+    ox 'ox_inventory:currentWeapon' event'i kusan / kilifa / mermi degisiminde
+    tetiklenir. Durum thread'i bunu 500ms'de bir yolluyordu; kilifa alinca silah
+    slotu (15) o gecikme kadar DOLU kaliyor, tasinan silah kisa sure 15'te
+    "takili" gorunuyordu. Buradan aninda gonderince kilifa alma an'inda 15
+    bosalir, silah dogrudan birakilan slotta gorunur (sicrama/gecikme yok).
+    Yalniz envanter acikken (NUI odakli) gonderilir.
+]]
+AddEventHandler('ox_inventory:currentWeapon', function(weapon)
+    if not IsNuiFocused() then return end
+    pushEquippedWeapon(type(weapon) == 'table' and weapon or nil)
+end)
+
 CreateThread(function()
     local last
     local lastEquipped = false -- 'false' = henuz gonderilmedi (nil'den ayirt icin)
+    local lastMag       -- sarjor mermisi (mag) son gonderilen deger
     local lastBagSent
     local lastCash
 
@@ -137,7 +165,7 @@ CreateThread(function()
             if not requestedFromServer then
                 requestedFromServer = true
                 CreateThread(function()
-                    local lvl = lib.callback.await('bitirim:server:getBagLevel', false)
+                    local lvl = lib.callback.await('loe:server:getBagLevel', false)
                     if type(lvl) == 'number' then currentBagLevel = lvl end
                 end)
             end
@@ -158,15 +186,28 @@ CreateThread(function()
             -- Kusanili silah: slot (sag tik menusunde Use/Unequip etiketi) + karakter
             -- panelindeki SILAH slotu gosterimi (name/label -> gorsel). Silah degisince
             -- (kusan/degis/holstered) ikisi de guncellenir. `false` = silah yok.
+            --
+            -- `ammo` = silahin MERMI ITEM ADI (Weapon.Equip -> item.ammo = data.ammoname,
+            -- or. 'ammo-9'). Arayuz bununla envanterdeki mermi yiginini bulup MERMI
+            -- slotunda (16) gosterir ve o slotu gridden gizler. Atilabilirlerde
+            -- (`WEAPON_SNOWBALL` gibi) envanterde karsiligi yoktur, arayuz bos birakir.
             local weapon = equippedWeapon()
             local wslot = weapon and weapon.slot or nil
+            -- `mag` = sarjordeki (yuklu) mermi. MERMI slotu (16) bunu envanterdeki
+            -- yedek yiginla toplayip gosterir: "silaha ait toplam mermi". Sarjor
+            -- her ateste degistigi icin slot degismese bile mag degisince yeniden
+            -- gonderilir (yoksa 16 eski sayida takili kalir).
+            local wmag = weapon and weapon.metadata and weapon.metadata.ammo or nil
 
-            if wslot ~= lastEquipped then
+            if wslot ~= lastEquipped or wmag ~= lastMag then
                 lastEquipped = wslot
+                lastMag = wmag
                 SendNUIMessage({ action = 'setEquippedSlot', data = wslot })
                 SendNUIMessage({
                     action = 'setEquippedWeapon',
-                    data = weapon and { name = weapon.name, label = weapon.label, slot = weapon.slot } or false,
+                    data = weapon
+                        and { name = weapon.name, label = weapon.label, slot = weapon.slot, ammo = weapon.ammo, mag = wmag or 0 }
+                        or false,
                 })
             end
 
@@ -195,9 +236,64 @@ CreateThread(function()
         else
             last = nil
             lastEquipped = false
+            lastMag = nil
             lastBagSent = nil
         end
 
         Wait(wait)
     end
 end)
+
+--[[
+    GECICI TESHIS -- /mermibak
+    -------------------------------------------------------------------------
+    Kusanili silahin mermi durumunu 6 saniye boyunca yarim saniyede bir F8'e
+    yazar. Komutu yazip silahla ates et; cikan satirlar nerede kirildigini
+    soyler:
+
+      item=N   -> ox'un takip ettigi mermi (silah metadata'si)
+      ped=N    -> ped'in gercek mermisi (GetAmmoInPedWeapon)
+      sarjor=N -> sarjordeki mermi
+
+    ped mermisi DUSMUYORSA disaridan sinirsiz mermi veren bir sey var
+    (vMenu 'unlimited ammo', qbx_adminmenu, baska bir resource).
+    ped DUSUP item DUSMUYORSA ox'un atis sayimi (IsPedShooting) calismiyor.
+
+    Isi bitince bu blogu sil.
+]]
+RegisterCommand('mermibak', function()
+    local weapon = exports[GetCurrentResourceName()]:getCurrentWeapon()
+
+    if type(weapon) ~= 'table' then
+        return print('^3[loe] mermibak: elinde ox silahi yok.^7')
+    end
+
+    print(('^3[loe] mermibak basladi: %s (mermi item: %s)^7')
+        :format(tostring(weapon.name), tostring(weapon.ammo)))
+
+    CreateThread(function()
+        for i = 1, 12 do
+            local cur = exports[GetCurrentResourceName()]:getCurrentWeapon()
+            if type(cur) ~= 'table' then
+                print('^3[loe] mermibak: silah birakildi, olcum bitti.^7')
+                return
+            end
+
+            local ped = PlayerPedId()
+            local total = GetAmmoInPedWeapon(ped, cur.hash)
+            local _, clip = GetAmmoInClip(ped, cur.hash)
+
+            print(('^3[loe] mermibak %02d  item=%s  ped=%s  sarjor=%s  dayaniklilik=%s^7'):format(
+                i,
+                tostring(cur.metadata and cur.metadata.ammo),
+                tostring(total),
+                tostring(clip),
+                tostring(cur.metadata and cur.metadata.durability)
+            ))
+
+            Wait(500)
+        end
+
+        print('^3[loe] mermibak bitti.^7')
+    end)
+end, false)

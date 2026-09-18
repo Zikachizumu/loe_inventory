@@ -36,34 +36,35 @@ return {
 	},
 
 	-- slots, maxWeight (gram)
-	-- Bitirim: TUM araclarda torpido = 6 slot / 50 KG (50000 g).
+	-- Loe: TUM araclarda torpido = 7 slot / 50 KG (50000 g). Kullanici
+	-- istegi (2026-09-10): Fast Access sirasiyla (7 slot) BIREBIR ayni olsun.
 	glovebox = {
-		[0] = {6, 50000},		-- Compact
-		[1] = {6, 50000},		-- Sedan
-		[2] = {6, 50000},		-- SUV
-		[3] = {6, 50000},		-- Coupe
-		[4] = {6, 50000},		-- Muscle
-		[5] = {6, 50000},		-- Sports Classic
-		[6] = {6, 50000},		-- Sports
-		[7] = {6, 50000},		-- Super
-		[8] = {6, 50000},		-- Motorcycle
-		[9] = {6, 50000},		-- Offroad
-		[10] = {6, 50000},		-- Industrial
-		[11] = {6, 50000},		-- Utility
-		[12] = {6, 50000},		-- Van
-		[14] = {6, 50000},		-- Boat
-		[15] = {6, 50000},		-- Helicopter
-		[16] = {6, 50000},		-- Plane
-		[17] = {6, 50000},		-- Service
-		[18] = {6, 50000},		-- Emergency
-		[19] = {6, 50000},		-- Military
-		[20] = {6, 50000},		-- Commercial (trucks)
+		[0] = {7, 50000},		-- Compact
+		[1] = {7, 50000},		-- Sedan
+		[2] = {7, 50000},		-- SUV
+		[3] = {7, 50000},		-- Coupe
+		[4] = {7, 50000},		-- Muscle
+		[5] = {7, 50000},		-- Sports Classic
+		[6] = {7, 50000},		-- Sports
+		[7] = {7, 50000},		-- Super
+		[8] = {7, 50000},		-- Motorcycle
+		[9] = {7, 50000},		-- Offroad
+		[10] = {7, 50000},		-- Industrial
+		[11] = {7, 50000},		-- Utility
+		[12] = {7, 50000},		-- Van
+		[14] = {7, 50000},		-- Boat
+		[15] = {7, 50000},		-- Helicopter
+		[16] = {7, 50000},		-- Plane
+		[17] = {7, 50000},		-- Service
+		[18] = {7, 50000},		-- Emergency
+		[19] = {7, 50000},		-- Military
+		[20] = {7, 50000},		-- Commercial (trucks)
 		models = {
-			[`xa21`] = {6, 50000}
+			[`xa21`] = {7, 50000}
 		}
 	},
 
-	-- Bitirim: TUM araclarda bagaj = 6x6 = 36 slot. Agirlik siniri 999.999 KG
+	-- Loe: TUM araclarda bagaj = 6x6 = 36 slot. Agirlik siniri 999.999 KG
 	-- (pratikte sinirsiz). Kilit acma/kapama (arac seviyesi/modeli) sonraki adim.
 	trunk = {
 		[0] = {36, 999999000},		-- Compact

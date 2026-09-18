@@ -42,7 +42,7 @@ client.player:set('invBusy', true)
 client.player:set('invHotkeys', false)
 client.player:set('canUseWeapons', false)
 
--- Bitirim: oyuncu olu/laststand/yarali mi? qbx_medical deathState statebag'i
+-- Loe: oyuncu olu/laststand/yarali mi? qbx_medical deathState statebag'i
 -- GUVENILIR — respawn beklerken ped teknik olarak DIRILTILSE bile deathState
 -- DEAD kalir (native IsEntityDead o an false doner, o yuzden yetmiyordu).
 -- qbx_medical yoksa native'lere + PlayerData.dead'e duser (fail-safe).
@@ -65,7 +65,7 @@ local function canOpenInventory()
         return shared.info('cannot open inventory', '(is busy)')
     end
 
-    -- Bitirim: olu/laststand/respawn-bekleme durumunda envanter ACILMAZ.
+    -- Loe: olu/laststand/respawn-bekleme durumunda envanter ACILMAZ.
     if isIncapacitated() then
         return shared.info('cannot open inventory', '(fatal injury)')
     end
@@ -135,6 +135,52 @@ end
 local CraftingBenches = require 'modules.crafting.client'
 local Vehicles = lib.load('data.vehicles')
 local Inventory = require 'modules.inventory.client'
+
+--[[
+	Loe: ARAC TORPIDOSU (glovebox) + Karakter/Torpido SEKMESI.
+
+	ESKI DAVRANIS: aractayken envanter tusuna basinca DOGRUDAN torpido aciliyordu
+	(canli karakter klonu hic gorunmuyordu; torpidosu olmayan araclarda envanter
+	HIC acilmiyordu). YENI DAVRANIS (kullanici istegi, 2026-09-10): aractayken
+	envanter tusu ARTIK OYUNCUNUN KENDI CANTASINI acar. Torpidoya ulasmak icin
+	ust bardaki (eskiden marka logosu olan alanda) "Karakter/Torpido" sekmesi
+	kullanilir -> loe:switchPanel NUI callback'i (asagida) mevcut envanteri
+	kapatip istenen tarafi acar.
+]]
+local function vehicleHasGlovebox(vehicle)
+	if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return false end
+	if not NetworkGetEntityIsNetworked(vehicle) or IsEntityDead(vehicle) then return false end
+
+	local vehicleHash = GetEntityModel(vehicle)
+	local vehicleClass = GetVehicleClass(vehicle)
+	local checkVehicle = Vehicles.Storage[vehicleHash]
+
+	if checkVehicle == 0 or checkVehicle == 2 then return false end
+
+	return (Vehicles.glovebox[vehicleClass] or Vehicles.glovebox.models[vehicleHash]) and true or false
+end
+
+--- Mevcut aracin torpidosunu acar. @return boolean basarili mi.
+local function openGlovebox(vehicle)
+	if not IsPedInAnyVehicle(playerPed, false) or not vehicleHasGlovebox(vehicle) then return false end
+
+	local isOpen = client.openInventory('glovebox', { netid = NetworkGetNetworkIdFromEntity(vehicle) })
+
+	if isOpen then currentInventory.entity = vehicle end
+
+	return isOpen and true or false
+end
+
+--- Karakter/Torpido sekmesinin gorunup gorunmeyecegini NUI'ye bildirir. Envanter
+--- HER ACILISTA (canta ya da torpido farketmez) gonderilir.
+--- setInVehicle: oyuncu bir aractaysa true -> NUI Karakter panelinde canli 3B
+--- karakter alanini KALDIRIR (kullanici istegi 2026-09-10: "aracta iken karakter
+--- gorunumunu kaldir"), sadece ekipman slotu sutunlari kalir. Studio sahnesinin
+--- kendisi de aractayken hic acilmaz (bkz. modules/loe/character_client.lua).
+local function pushVehicleGlovebox()
+	SendNUIMessage({ action = 'setVehicleGlovebox', data = cache.vehicle and vehicleHasGlovebox(cache.vehicle) or false })
+	SendNUIMessage({ action = 'setInVehicle', data = cache.vehicle and true or false })
+end
 
 ---@param inv string?
 ---@param data any?
@@ -307,6 +353,10 @@ function client.openInventory(inv, data)
             rightInventory = currentInventory
         }
     })
+
+    -- Loe: Karakter/Torpido sekmesi icin -- canta ya da torpido, hangisi
+    -- acilirsa acilsin mevcut arac+glovebox durumu NUI'ye gonderilir.
+    pushVehicleGlovebox()
 
     if inv and not currentInventory.coords and inv ~= 'container' and inv ~= 'glovebox' then
         currentInventory.coords = GetEntityCoords(playerPed)
@@ -569,17 +619,55 @@ local function useSlot(slot, noAnim)
 					if sleep then Wait(sleep) end
 				end
 			end, noAnim)
+
+			--[[
+				Loe: KUSANINCA SARJORU OTOMATIK DOLDUR.
+
+				Yeni alinan silahin sarjoru bostur (metadata.ammo = 0); ox'ta
+				once mermiye basip doldurman gerekir, yoksa "silah + mermi var
+				ama ates etmiyor" gorunur. Burada kusandiktan HEMEN sonra, sarjor
+				bossa ve cantada uygun mermi varsa normal doldurma yolu
+				(useSlot -> ammo dali) calistirilir. Boylece "silah + mermi =
+				ates edebilir". Ayrica mermi item'i sarjore girip envanterden
+				dustugu icin merminin Fast Access slotu da bosalir.
+
+				useItem'in kendi 500ms kilidi bittikten SONRA (bu satira gelmis
+				olmamiz o kilidin bittigi anlamina gelir) cagriliyor; usingItem
+				serbest oldugu icin doldurma reddedilmez.
+			]]
+			if currentWeapon and currentWeapon.ammo and not currentWeapon.throwable
+				and not currentWeapon.melee and (currentWeapon.metadata.ammo or 0) <= 0
+				and (currentWeapon.metadata.durability or 0) > 0 then
+				local ammoSlot = Inventory.GetSlotIdWithItem(currentWeapon.ammo, { type = currentWeapon.metadata.specialAmmo }, false)
+				if ammoSlot then useSlot(ammoSlot, true) end
+			end
 		elseif currentWeapon then
 			if data.ammo then
 				if EnableWeaponWheel or currentWeapon.metadata.durability <= 0 then return end
 
 				local clipSize = GetMaxAmmoInClip(playerPed, currentWeapon.hash, true)
-				local currentAmmo = GetAmmoInPedWeapon(playerPed, currentWeapon.hash)
+				--[[
+					Loe: DOLDURMA HESABI PED'IN MERMISINE DEGIL, OX'UN TAKIP
+					ETTIGI MERMIYE dayanir.
+
+					Sebep olculdu (/mermibak): ped'de item=0 iken ped=5,
+					sarjor=12 gorundu -- yani ped'de envanterde KARSILIGI
+					OLMAYAN mermi vardi. Eski hesap ped'i esas aldigi icin
+					1 mermi yuklerken sunucudan 6 mermi item'i dusulmesini
+					istiyordu; oyuncuda 1 tane oldugu icin RemoveItem
+					BASARISIZ oluyor, metadata.ammo 0'da kaliyor ve mermi
+					cantadan hic eksilmiyordu. Sonuc: mermi var ama silah
+					ates etmiyor.
+
+					metadata.ammo esas alininca sunucudan istenen fark tam
+					olarak yuklenen mermi kadar olur.
+				]]
+				local currentAmmo = currentWeapon.metadata.ammo or 0
 				local _, maxAmmo = GetMaxAmmo(playerPed, currentWeapon.hash)
 
 				if maxAmmo < clipSize then clipSize = maxAmmo end
 
-				if currentAmmo == clipSize then return end
+				if currentAmmo >= clipSize then return end
 
 				useItem(data, function(resp)
 					if not resp or resp.name ~= currentWeapon?.ammo then return end
@@ -627,14 +715,19 @@ local function useSlot(slot, noAnim)
 						clipSize = GetMaxAmmoInClip(playerPed, currentWeapon.hash, true)
 					end
 
-					currentAmmo = GetAmmoInPedWeapon(playerPed, currentWeapon.hash)
+					-- Loe: yine takip edilen mermi (yukaridaki gerekce).
+					currentAmmo = currentWeapon.metadata.ammo or 0
 					local missingAmmo = clipSize - currentAmmo
 					local addAmmo = resp.count > missingAmmo and missingAmmo or resp.count
 					local newAmmo = currentAmmo + addAmmo
 
 					if newAmmo == currentAmmo then return end
 
-                    AddAmmoToPed(playerPed, currentWeapon.hash, addAmmo)
+					-- AddAmmoToPed (goreli) DEGIL SetPedAmmo (mutlak): ped'de
+					-- envanterde karsiligi olmayan mermi kalmissa burada
+					-- silinir, ped ile item birebir esitlenir. ox atisi
+					-- GetAmmoInPedWeapon farkindan saydigi icin bu esitlik sart.
+					SetPedAmmo(playerPed, currentWeapon.hash, newAmmo)
 
 					if cache.vehicle then
 						if cache.seat > -1 or IsVehicleStopped(cache.vehicle) then
@@ -660,6 +753,17 @@ local function useSlot(slot, noAnim)
 							while IsPedReloading(playerPed) do
 								DisableControlAction(0, 22, true)
 								Wait(0)
+							end
+
+							--[[ Loe: doldurma bitince silahi TAM olarak yuklenen
+							     mermiye sabitle. Enhance'de MakePedReload sarjori
+							     bazen TAM dolduruyor (1 yukleyip 12 sarjor); yedek
+							     de newAmmo'ya cekilir ki fazladan mermi kalmasin.]]
+							if currentWeapon then
+								local hash = currentWeapon.hash
+								local size = GetMaxAmmoInClip(playerPed, hash, true) or newAmmo
+								SetAmmoInClip(playerPed, hash, newAmmo < size and newAmmo or size)
+								SetPedAmmo(playerPed, hash, newAmmo)
 							end
 						end)
 					end
@@ -755,7 +859,7 @@ function OnPlayerData(key, val)
 	Utils.WeaponWheel()
 end
 
--- Bitirim: olu/laststand/respawn-bekleme durumunda envanteri KESIN kapali tut.
+-- Loe: olu/laststand/respawn-bekleme durumunda envanteri KESIN kapali tut.
 -- 'dead' state degisimi (yukarida) tek seferliktir ve intihar/timing'de kacabiliyor;
 -- ayrica respawn beklerken ped dirilse de oyuncu "olu" ekranindadir. Bu dongu
 -- envanter acikken oyuncu ehliyetsiz (isIncapacitated) ise UI'yi zorla kapatir.
@@ -781,25 +885,6 @@ local function registerCommands()
 		RegisterCommand('steal', openNearbyInventory, false)
 	end
 
-	local function openGlovebox(vehicle)
-		if not IsPedInAnyVehicle(playerPed, false) or not NetworkGetEntityIsNetworked(vehicle) then return end
-
-		if IsEntityDead(vehicle) then return end
-
-		local vehicleHash = GetEntityModel(vehicle)
-		local vehicleClass = GetVehicleClass(vehicle)
-		local checkVehicle = Vehicles.Storage[vehicleHash]
-
-		-- No storage or no glovebox
-		if (checkVehicle == 0 or checkVehicle == 2) or (not Vehicles.glovebox[vehicleClass] and not Vehicles.glovebox.models[vehicleHash]) then return end
-
-		local isOpen = client.openInventory('glovebox', { netid = NetworkGetNetworkIdFromEntity(vehicle) })
-
-		if isOpen then
-			currentInventory.entity = vehicle
-		end
-	end
-
 	local primary = lib.addKeybind({
 		name = 'inv',
 		description = locale('open_player_inventory'),
@@ -809,9 +894,10 @@ local function registerCommands()
 				return client.closeInventory()
 			end
 
-			if cache.vehicle then
-				return openGlovebox(cache.vehicle)
-			end
+			-- Loe: aractayken ARTIK torpidoya degil, oyuncunun KENDI CANTASINA
+			-- gecilir (canli karakter klonu gorunur). Torpidoya ust bardaki
+			-- Karakter/Torpido sekmesinden ulasilir (bkz. openGlovebox/loe:switchPanel).
+			-- (openGlovebox hala 'inv2' icin ve o sekme icin kullaniliyor.)
 
 			local closest = lib.points.getClosestPoint()
 
@@ -901,7 +987,7 @@ local function registerCommands()
 		end
 	})
 
-	-- Bitirim: 7 Fast Access slotu -> tuslar 1-7 (6=silah, 7=mermi vb. kusanir).
+	-- Loe: 7 Fast Access slotu -> tuslar 1-7 (6=silah, 7=mermi vb. kusanir).
 	for i = 1, 7 do
 		lib.addKeybind({
 			name = ('hotkey%s'):format(i),
@@ -1499,7 +1585,7 @@ RegisterNetEvent('ox_inventory:setPlayerInventory', function(currentDrops, inven
 				EnableControlAction(0, 31, true)
 			end
 
-			-- Bitirim: envanter/karakter acikken KARAKTER HAREKET ETMESIN. enablekeys
+			-- Loe: envanter/karakter acikken KARAKTER HAREKET ETMESIN. enablekeys
 			-- (server convar) hareket tuslari icerse bile burada (enable'lardan SONRA)
 			-- WASD/analog/kosma/ziplama KAPATILIR -> preview net kalir, oyuncu kaymaz.
 			DisableControlAction(0, 30, true)  -- move LR (A/D analog)
@@ -1528,6 +1614,76 @@ RegisterNetEvent('ox_inventory:setPlayerInventory', function(currentDrops, inven
 			if currentWeapon and currentWeapon.timer then
 				DisableControlAction(0, 80, true)
 				DisableControlAction(0, 140, true)
+
+				--[[
+					Loe: MERMISIZ SILAH ATES EDEMEZ.
+
+					`currentWeapon.ammo` = silahin mermi item adi; bicak/sopa
+					gibi mermisiz silahlarda nil, etkilenmezler. ATILABILIRLER
+					(el bombasi, molotof) ayrica DISLANIR: onlarin `ammo` alani
+					dolu ama metadata.ammo'su 0'dir, koruma disarida
+					birakilmazsa hicbiri atilamaz olurdu.
+					Takip edilen mermi 0 ise hem ates kilitlenir hem ped'in
+					mermisi 0'a cekilir.
+
+					SADECE ATES KILITLENIR, ped'in mermisine DOKUNULMAZ.
+					Ilk denemede burada `SetPedAmmo(..., 0)` da vardi ve sarjor
+					doldurmayi imkansiz hale getiriyordu: doldurma once ped'e
+					mermiyi verip (AddAmmoToPed) SONRA sunucudan onay bekliyor,
+					yani arada metadata.ammo hala 0. O aralikta ped'in mermisi
+					sifirlaninca yeni yuklenen mermi siliniyordu. Ates zaten
+					kilitli oldugu icin ped'de fazladan mermi durmasinin bir
+					zarari yok.
+
+					Mermi > 0 iken HICBIR SEYE dokunulmaz -- ox atisi
+					`GetAmmoInPedWeapon` farkindan sayiyor, bozulmasin.
+				]]
+				local trackedAmmo = currentWeapon.ammo and not currentWeapon.throwable
+					and not currentWeapon.melee and (currentWeapon.metadata.ammo or 0)
+
+				if trackedAmmo and trackedAmmo <= 0 then
+					DisablePlayerFiring(playerId, true)
+				end
+
+				--[[
+					Loe: SILAH ITEM'DE YAZANDAN FAZLA MERMI TUTAMAZ.
+
+					Sorun (kullanici): silahi "Ammo: 1" gosteriyor ama 12 el ates
+					ediliyor, sarjor bosalinca R ile tekrar doluyor. Sebep: disari-
+					dan (admin/vMenu "sinirsiz mermi") ya da bir kaynak silaha
+					sonsuz YEDEK mermi veriyor; ox mermiyi metadata.ammo'da 1 takip
+					ederken ped'in sarjoru yedekten tekrar tekrar doluyor.
+
+					1) Sinirsiz mermi FLAG'lerini her karede kapat (cogu menu bunu
+					   SetPedInfiniteAmmo/Clip ile ACIYOR; tek sefer aciyorsa boylece
+					   surekli kapali kalir). Yangin sondurucu/benzin bidonu HARIC
+					   (onlar bilerek sonsuz mermi kullanir, Weapon.Equip'te acilir).
+					2) ATES ETMIYORKEN, ped'in toplam mermisi takip edilenden
+					   fazlaysa geri cek (yedek stoklanmasin). Ates SIRASINDA
+					   dokunmayiz: atis sayaci GetAmmoInPedWeapon farkindan sayar,
+					   o araliga karismak sayimi bozar.
+
+					NOT: bir menu HER KARE ped'e mermi basiyorsa buradaki savunma
+					yaris haline gelir; kesin cozum menuden "sinirsiz mermi"yi
+					kapatmaktir.
+				]]
+				if currentWeapon.ammo and not currentWeapon.throwable and not currentWeapon.melee
+					and currentWeapon.group ~= `GROUP_PETROLCAN` and currentWeapon.group ~= `GROUP_FIREEXTINGUISHER` then
+					SetPedInfiniteAmmo(playerPed, false, currentWeapon.hash)
+					SetPedInfiniteAmmoClip(playerPed, false)
+
+					-- usingItem/IsPedReloading SIRASINDA DOKUNMA: doldurma aninda
+					-- metadata.ammo daha 0 (server onayi gelmedi); burada silersek
+					-- yeni yuklenen mermi ucar (onceki regresyon). Doldurma bitip
+					-- metadata guncellenince (usingItem=false) yeniden serbest.
+					local tracked = currentWeapon.metadata.ammo or 0
+					if not usingItem and not IsPedShooting(playerPed) and not IsPedReloading(playerPed)
+						and GetAmmoInPedWeapon(playerPed, currentWeapon.hash) > tracked then
+						SetPedAmmo(playerPed, currentWeapon.hash, tracked)
+						local _, clip = GetAmmoInClip(playerPed, currentWeapon.hash)
+						if clip > tracked then SetAmmoInClip(playerPed, currentWeapon.hash, tracked) end
+					end
+				end
 
 				if currentWeapon.metadata.durability <= 0 or not currentWeapon.timer then
 					DisablePlayerFiring(playerId, true)
@@ -1910,6 +2066,66 @@ RegisterNUICallback('swapItems', function(data, cb)
 		else
 			lib.notify({ type = 'error', description = locale(response) })
 		end
+	end
+end)
+
+--[[
+	Loe: KUSANILI SILAHI KILIFA AL (tasima YOK, sadece disarm).
+
+	Karakter panelindeki silahi envanterdeki bir hucreye surukleyince arayuz
+	once silahi (kusanili haldeyken) o hucreye TASIR -- ox'un standart
+	surukle-birak yolu (onDrop -> swapItems), kusanili silah tasinirken yeni
+	slotu geri verip currentWeapon.slot'u yeniden isaretledigi icin guvenli --
+	sonra bu callback ile silah KILIFA alinir. Boylece silah oyuncunun sectigi
+	slotta ve bosta kalir; sarjordeki mermi (Disarm -> unload) envantere doner.
+
+	Tasima once yapildigi icin silah artik hedef slottadir; mermi de o slota
+	degil bos bir slota doner (cakisma olmaz).
+]]
+RegisterNUICallback('loe:holster', function(_, cb)
+	-- ONCE kilifa al (animasyonsuz), SONRA cb -> arayuz tasimayi (onDrop) bundan
+	-- SONRA yapar. Boylece silah "hedef slotta kusanili" ara durumuna HIC girmez.
+	-- O ara durum (currentWeapon.slot = hedef) hedef slotu gizletip item'i 15'te
+	-- gosterip sonra geri getiriyordu (kullanicinin gordugu ~0.5sn sicrama).
+	-- currentWeapon burada nil oldugu icin sonraki tasima onu yeniden isaretlemez;
+	-- item dogrudan birakilan slotta ve bosta gorunur. Mermi (Disarm -> unload)
+	-- envantere doner. noAnim = kilif animasyonu beklenmez (aninda).
+	if currentWeapon then currentWeapon = Weapon.Disarm(currentWeapon, true) end
+	cb(1)
+end)
+
+--[[
+	Loe: Karakter <-> Torpido SEKME GECISI (aractayken, ust bar).
+
+	ox mimarisinde iki farkli envanteri (torpido + oyuncunun kendi cantasi) AYNI
+	ANDA acik tutmanin guvenli bir yolu yok -- kilit/senkron/DB kaydi her envanter
+	kendi ac/kapa dongusunde yapilir. Bu yuzden burada da ONCE mevcut envanter
+	KAPATILIR (torpidoysa icerigi sunucuda kaydedilir), SONRA istenen taraf
+	ACILIR. Gecis Fade animasyonu kisa oldugu icin "sekme degisti" hissi verir,
+	veri kaybi/kilit riski olmadan.
+]]
+RegisterNUICallback('loe:switchPanel', function(data, cb)
+	cb(1)
+
+	local target = data and data.target
+	if target ~= 'character' and target ~= 'glovebox' then return end
+
+	local vehicle = cache.vehicle
+	if not invOpen or not vehicle then return end
+
+	local onGlovebox = currentInventory.type == 'glovebox'
+	if (target == 'glovebox') == onGlovebox then return end -- zaten istenen tarafta
+
+	if target == 'glovebox' and not vehicleHasGlovebox(vehicle) then
+		return lib.notify({ id = 'cannot_perform', type = 'error', description = locale('cannot_perform') })
+	end
+
+	client.closeInventory()
+
+	if target == 'glovebox' then
+		openGlovebox(vehicle)
+	else
+		client.openInventory()
 	end
 end)
 

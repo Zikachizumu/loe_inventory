@@ -9,7 +9,7 @@
 /coverage
 
 # production
-# Bitirim: /build BILEREK commit edilir — sunucuda Bun/Node yok, init.lua
+# Loe: /build BILEREK commit edilir — sunucuda Bun/Node yok, init.lua
 # acilista web/build/index.html arar. Ust dizindeki .gitignore da bunu aciklar.
 # /build
 

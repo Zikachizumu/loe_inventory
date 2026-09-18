@@ -29,7 +29,7 @@ const InventoryHotbar: React.FC = () => {
       <div className="hotbar-container">
         {items.map((item) => (
           <div
-            // Bitirim: dolu slot vurgusu icin stil kancasi.
+            // Loe: dolu slot vurgusu icin stil kancasi.
             className={isSlotWithItem(item) ? 'hotbar-item-slot has-item' : 'hotbar-item-slot'}
             style={{
               backgroundImage: `url(${item?.name ? getItemUrl(item as SlotWithItem) : 'none'}`,

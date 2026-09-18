@@ -1,7 +1,7 @@
 --[[
-    Bitirim — EKIPMAN / KIYAFET CLIENT (giyili ekipmani ped'e uygula + panel)
+    Loe — EKIPMAN / KIYAFET CLIENT (giyili ekipmani ped'e uygula + panel)
     -------------------------------------------------------------------------
-    Server (equipment_server.lua) giyili ekipmani `bitirim:client:equipment`
+    Server (equipment_server.lua) giyili ekipmani `loe:client:equipment`
     ile yollar: payload = { slot = { drawable, texture } }. Bu modul:
       1) Ped'e uygular (GTA native): component -> SetPedComponentVariation,
          prop -> SetPedPropIndex. Giyili OLMAYAN slotlar underwear tabanina
@@ -15,13 +15,13 @@
 
     BOS SLOT = CIPLAK. Bu sunucuda giyilen her sey bir item'dir, o yuzden bos bir
     slot illenium'un kaydettigi kiyafete DEGIL, underwear tabanina doner
-    (data/bitirim_clothing.lua -> underwear). Boylece oyuncu tum kiyafetlerini
+    (data/loe_clothing.lua -> underwear). Boylece oyuncu tum kiyafetlerini
     cikardiginda karakterde yalnizca ic camasiri kalir; sahip olmadigi bir kiyafet
     uzerinde asla gorunmez. Prop slotlari bosaldiginda tamamen temizlenir.
-    Slot->GTA hedefi ve underwear tablosu: data/bitirim_clothing.lua.
+    Slot->GTA hedefi ve underwear tablosu: data/loe_clothing.lua.
 ]]
 
-local clothing = lib.load('data.bitirim_clothing')
+local clothing = lib.load('data.loe_clothing')
 
 local currentEquip = {}      -- slot -> { drawable, texture } (server'dan gelen guncel)
 local requestedOnce = false
@@ -31,7 +31,7 @@ local equipmentReceived = false -- sunucudan ilk ekipman payload'i geldi mi (spa
 -- Basit log yardimcisi (Utils namespace'i yok, lib.print/print kullan)
 local Utils = {
     log = function(...)
-        print('[bitirim_equipment]', ...)
+        print('[loe_equipment]', ...)
     end
 }
 
@@ -45,8 +45,13 @@ local globalSleevesOnly = {
 
 --- Bos bir component slotunun taban (ciplak) gorunumu. Tabloda yoksa 0 =
 --- "hicbir sey yok" (maske / zincir / yelek boyle davranir).
-local function underwearOf(slot)
-    local u = clothing.underwear and clothing.underwear[slot]
+local function underwearOf(slot, isFemale)
+    local t = clothing.underwear
+    if type(t) ~= 'table' then return 0, 0 end
+    -- Tablo cinsiyete gore ayrildi. ESKI DUZ SEKLI de kabul ediliyor:
+    -- guncellenmemis bir kopya sessizce kirilmasin.
+    local g = t[isFemale and 'female' or 'male']
+    local u = (type(g) == 'table' and g[slot]) or t[slot]
     if type(u) ~= 'table' then return 0, 0 end
     return u.drawable or 0, u.texture or 0
 end
@@ -77,7 +82,7 @@ local TOPS_COMPONENT = 11
     VERMIYOR, sessizce 0 donuyor -- bu yuzden bu fonksiyon bugune kadar
     HER ZAMAN nil donmus, kol her seferinde defaultArms'a dusmus olmali.
 
-    Olculen kanit (bitirim_clothing /kiyafetprob, mp_m_freemode_01, b3788):
+    Olculen kanit (loe_clothing /kiyafetprob, mp_m_freemode_01, b3788):
         GetNumForcedComponents(model)       -> 0
         GetNumForcedComponents(apparelHash) -> 2
         GetForcedComponent(apparelHash, 0)  -> 1849449579, 5, 3
@@ -155,7 +160,7 @@ local function applyEquip()
                     SetPedComponentVariation(ped, def.id, ed, et or 0, 0)
                 end
             elseif isFreemode then
-                local ud, ut = underwearOf(slot)
+                local ud, ut = underwearOf(slot, isFemale)
                 if IsPedComponentVariationValid(ped, def.id, ud, ut) then
                     SetPedComponentVariation(ped, def.id, ud, ut, 0)
                 end
@@ -176,12 +181,12 @@ local function applyEquip()
     --      secilen deger. GTA bu eslesmeyi vermedigi icin asil kaynak budur.
     --   2) Oyunun "zorunlu bilesen" verisi — freemode kiyafetlerinde cogunlukla
     --      bos, yine de bedava bir ihtimal.
-    --   3) data/bitirim_clothing.lua -> defaultArms (giyinik varsayilan).
+    --   3) data/loe_clothing.lua -> defaultArms (giyinik varsayilan).
     -- Oyuncu KOL slotuna kendi bir parca taktiysa hicbirine bakilmaz.
     -- EK: sleevesOnly (govde icermeyen kol) kontrolu — bu tipleri uygulama.
 
     --- Kol drawable'in image key'ini uretir (collection native'lere dayali).
-    --- Ayni mantik bitirim_clothing/client/appearance.lua -> Appearance.getImageKey
+    --- Ayni mantik loe_clothing/client/appearance.lua -> Appearance.getImageKey
     local function getArmsImageKey(ped, drawable, isFemale)
         if not GetPedCollectionNameFromDrawable or not GetPedCollectionLocalIndexFromDrawable then
             return nil
@@ -288,7 +293,7 @@ local function applyEquip()
 
         -- Son fallback: underwear (ciplak kol)
         if not armsDrawable then
-            local ud, ut = underwearOf('gloves')
+            local ud, ut = underwearOf('gloves', isFemale)
             if IsPedComponentVariationValid(ped, ARMS_COMPONENT, ud, ut) then
                 armsDrawable, armsTexture = ud, ut
                 Utils.log(('applyGlovesSlot: underwear fallback -> %d:%d'):format(armsDrawable, armsTexture))
@@ -334,8 +339,8 @@ local function pushClothingMap()
 end
 
 -- Server giyili ekipmani gonderdi -> uygula + panele yolla.
-RegisterNetEvent('bitirim:client:equipment', function(payload)
-    Utils.log(('bitirim:client:equipment alindi: %s slot'):format(payload and 'dolu' or 'bos'))
+RegisterNetEvent('loe:client:equipment', function(payload)
+    Utils.log(('loe:client:equipment alindi: %s slot'):format(payload and 'dolu' or 'bos'))
     if payload then
         for slot, data in pairs(payload) do
             Utils.log(('  slot=%s item=%s wear=%s'):format(slot, data.item or '?', data.wear and 'var' or 'yok'))
@@ -349,31 +354,31 @@ end)
 
 -- Panelden cikarma istegi (dolu equip slotuna tik / envantere surukle) -> server.
 -- data.toSlot: envantere SURUKLENIP birakilan hedef slot (varsa item oraya gider).
-RegisterNUICallback('bitirim:unequip', function(data, cb)
+RegisterNUICallback('loe:unequip', function(data, cb)
     if type(data) == 'table' and type(data.slot) == 'string' then
-        TriggerServerEvent('bitirim:server:unequip', data.slot, tonumber(data.toSlot))
+        TriggerServerEvent('loe:server:unequip', data.slot, tonumber(data.toSlot))
     end
     cb(1)
 end)
 
 -- HIZLI GIYME (cift-tik / surukle-giy): ox useItem gecikmesini atlar.
-RegisterNUICallback('bitirim:equip', function(data, cb)
+RegisterNUICallback('loe:equip', function(data, cb)
     if type(data) == 'table' and data.slot then
-        TriggerServerEvent('bitirim:server:equipSlot', data.slot)
+        TriggerServerEvent('loe:server:equipSlot', data.slot)
     end
     cb(1)
 end)
 
 --- ZIRH item'i (Bulletproof Vest 'armour') KULLANIMI -> bizim equip sistemimize.
---- data/items.lua 'armour'.client.event = 'bitirim:client:useArmour' ile baglandi;
+--- data/items.lua 'armour'.client.event = 'loe:client:useArmour' ile baglandi;
 --- boylece ox'un DAHILI Item('armour') effect'i (sadece SetPedArmour 100; gorsel/panel
 --- YOK, item'i tuketir) devre disi kalir. ox use dispatch'i `TriggerEvent(event, data,
 --- {name,slot,metadata})` cagirir -> `info.slot` = kullanilan envanter slotu. equipSlot
 --- server'da o slottaki 'armour' item'ini armour slotuna equip eder (gorsel yelek
 --- component 9 + zirh degeri wear.armour + panelde gozukur). Cikarinca item geri doner.
-AddEventHandler('bitirim:client:useArmour', function(_, info)
+AddEventHandler('loe:client:useArmour', function(_, info)
     if type(info) == 'table' and info.slot then
-        TriggerServerEvent('bitirim:server:equipSlot', info.slot)
+        TriggerServerEvent('loe:server:equipSlot', info.slot)
     end
 end)
 
@@ -384,7 +389,7 @@ CreateThread(function()
             requestedOnce = true
             pushClothingMap() -- legacy kiyafet -> slot haritasi (surukle-giy highlight)
             CreateThread(function()
-                pcall(function() lib.callback.await('bitirim:server:getEquipment', false) end)
+                pcall(function() lib.callback.await('loe:server:getEquipment', false) end)
             end)
         end
         Wait(500)
@@ -410,7 +415,7 @@ local function onFreshSpawn()
     CreateThread(function()
         -- Ekipmani sunucudan hemen iste (server'in 1.5 sn'lik push'unu bekleme).
         CreateThread(function()
-            pcall(function() lib.callback.await('bitirim:server:getEquipment', false) end)
+            pcall(function() lib.callback.await('loe:server:getEquipment', false) end)
         end)
 
         -- Veri gelene kadar bekle (en fazla 5 sn), sonra ~4 sn boyunca tekrarla.
@@ -440,7 +445,7 @@ RegisterNetEvent('qbx_core:client:playerLoggedIn', onFreshSpawn)
     Su an giyili tum ekipman slotlarinin GTA degerlerini (component/prop id +
     drawable + texture) ve oyuncunun cinsiyetini F8 konsoluna yazar. Kullanim:
     kiyafet dukkaninda parcayi giy -> /kiyafetbak -> cikan drawable/texture'i
-    data/bitirim_clothing.lua'daki items tablosuna gecir.
+    data/loe_clothing.lua'daki items tablosuna gecir.
     NOT: bu komut hicbir seyi degistirmez, sadece OKUR.
 ]]
 RegisterCommand('kiyafetbak', function()
@@ -448,7 +453,7 @@ RegisterCommand('kiyafetbak', function()
     local isFemale = GetEntityModel(ped) == `mp_f_freemode_01`
     local gender = isFemale and 'kadin (female)' or 'erkek (male)'
 
-    print(('^3[bitirim] Su an giyili degerler — cinsiyet: %s^7'):format(gender))
+    print(('^3[loe] Su an giyili degerler — cinsiyet: %s^7'):format(gender))
     print('^3  slot      | tip        id | drawable texture^7')
     for slot, def in pairs(clothing.slots) do
         local d, t
@@ -459,7 +464,7 @@ RegisterCommand('kiyafetbak', function()
         end
         print(('  %-9s | %-9s %2d | drawable=%d texture=%d'):format(slot, def.kind, def.id, d, t))
     end
-    print('^3[bitirim] Bu degerleri data/bitirim_clothing.lua > items tablosuna gecir.^7')
+    print('^3[loe] Bu degerleri data/loe_clothing.lua > items tablosuna gecir.^7')
 
     lib.notify({ type = 'inform', description = 'Kiyafet degerleri F8 konsoluna yazildi.' })
 end, false)

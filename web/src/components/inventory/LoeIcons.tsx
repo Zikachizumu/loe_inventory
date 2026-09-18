@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Bitirim — onaylanmis mockup'taki cizgi ikon seti.
+ * Loe — onaylanmis mockup'taki cizgi ikon seti.
  * Hepsi currentColor kullanir; renk CSS'ten (seviye temasi) gelir.
  */
 

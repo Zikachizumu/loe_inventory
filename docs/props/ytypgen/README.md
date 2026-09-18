@@ -18,10 +18,10 @@ dotnet run -- <ytyp_dosya_yolu> <model1,model2,...>
   `bsRadius=45`, `lodDist=500`). Çok farklı boyutta bir prop için `Program.cs`
   içindeki bu değerleri elle güncelle.
 
-## Örnek (bitirim_inventory backdrop renkli varyantları, 2026-08-12)
+## Örnek (loe_inventory backdrop renkli varyantları, 2026-08-12)
 
 ```bash
-dotnet run -- "C:\Users\Luffy\Documents\GitHub\bitirim_inventory\stream\bitirim_props.ytyp" \
+dotnet run -- "C:\Users\Luffy\Documents\GitHub\loe_inventory\stream\bitirim_props.ytyp" \
   bitirim_backdrop_lv1,bitirim_backdrop_lv2,bitirim_backdrop_lv3,bitirim_backdrop_lv4,bitirim_backdrop_lv5
 ```
 

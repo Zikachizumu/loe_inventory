@@ -140,9 +140,9 @@ Item('phone', function(data, slot)
 end)
 
 --[[
-	BITIRIM: ox'un jenerik 'clothing' item'i ped'i DOGRUDAN degistiriyordu
+	LOE: ox'un jenerik 'clothing' item'i ped'i DOGRUDAN degistiriyordu
 	(SetPedComponentVariation / SetPedPropIndex). Artik kiyafet, ekipman
-	slotlarindan yonetiliyor (modules/bitirim/equipment_server.lua): parca
+	slotlarindan yonetiliyor (modules/loe/equipment_server.lua): parca
 	envanterden cikip slota girer, panelde gorunur, cikarinca envantere doner
 	ve bos slot underwear'a duser.
 
@@ -164,7 +164,7 @@ Item('clothing', function(data, slot)
 		return print('Clothing is missing metadata')
 	end
 
-	TriggerServerEvent('bitirim:server:equipSlot', slot.slot)
+	TriggerServerEvent('loe:server:equipSlot', slot.slot)
 end)
 
 -----------------------------------------------------------------------------------------------

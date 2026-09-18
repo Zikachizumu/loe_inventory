@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '.';
 
 /**
- * Bitirim — nakit (cash).
+ * Loe — nakit (cash).
  *
  * GrandRP mantigi: nakit ENVANTER ITEM'i DEGIL; qbx_core/account yonetir.
  * Client Lua `setCash` ile qbx nakit'ini yollar; ust bar bunu gosterir.

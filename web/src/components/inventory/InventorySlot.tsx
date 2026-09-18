@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
 import { DragSource, Inventory, InventoryType, Slot, SlotWithItem } from '../../typings';
 import { useDrag, useDragDropManager, useDrop } from 'react-dnd';
-import { useAppDispatch } from '../../store';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { selectEquipHiddenSlots } from '../../store/equipment';
 import WeightBar from '../utils/WeightBar';
 import { onDrop } from '../../dnd/onDrop';
 import { onBuy } from '../../dnd/onBuy';
@@ -31,11 +32,18 @@ const InventorySlot: React.ForwardRefRenderFunction<HTMLDivElement, SlotProps> =
   const manager = useDragDropManager();
   const dispatch = useAppDispatch();
 
-  // Bitirim: nakit ve telefon oyuncu envanterinde GIZLENIR. Item durur (ust bar
+  // Kusanili silah + o silahin mermisi: karakter panelinde 15/16 numarali
+  // slotlarda gosterilirler, bu yuzden envanterde gizlenirler.
+  const hiddenEquipSlots = useAppSelector(selectEquipHiddenSlots);
+
+  // Loe: nakit ve telefon oyuncu envanterinde GIZLENIR. Item durur (ust bar
   // nakit + shop odemesi + npwd calismaya devam eder); slot bos gorunur ve
   // etkilesimsizdir (surukleme yok, ustune birakilamaz, kullanilamaz).
+  // AYNI mekanizma kusanili silah ve mermisi icin de kullanilir.
   const isHidden =
-    inventoryType === 'player' && isSlotWithItem(item) && (item.name === 'money' || item.name === 'phone');
+    inventoryType === 'player' &&
+    isSlotWithItem(item) &&
+    (item.name === 'money' || item.name === 'phone' || hiddenEquipSlots.has(item.slot));
 
   const canDrag = useCallback(() => {
     return (
@@ -73,11 +81,36 @@ const InventorySlot: React.ForwardRefRenderFunction<HTMLDivElement, SlotProps> =
       }),
       drop: (source, monitor) => {
         dispatch(closeTooltip());
-        // Bitirim: karakter ekipman slotundan surukleyip envantere birakmak = CIKAR.
+        // Loe: karakter ekipman slotundan surukleyip envantere birakmak = CIKAR.
         // Birakilan hedef slot (item.slot) da yollanir -> item o slota gider (siralama yok).
         if (monitor.getItemType() === 'EQUIP') {
+          // SILAH slotu ayri: silah zaten envanterde duruyor (sadece gizli), o
+          // yuzden "iade" yok — ox'ta ayni slotu tekrar use etmek kilifa alir ve
+          // item kendi eski yerinde tekrar gorunur (birakilan hucrede degil).
+          if (source?.slot === 'weapon') {
+            // ONCE kilifa al, SONRA birakilan slota tasi. Sirasi onemli: kilifa
+            // alinca currentWeapon=nil olur, boylece tasima silahi "hedef slotta
+            // kusanili" ara durumuna sokmaz (o ara durum item'i 15'te gosterip
+            // geri getiriyordu -> sicrama). Kilifa alma bitince (cb) tasima yapilir;
+            // silah dogrudan hedef slotta ve bosta gorunur. Mermi envantere doner.
+            if (typeof source.weaponSlot === 'number') {
+              const from = source.weaponSlot;
+              const to = item.slot;
+              const name = source.weaponName ?? '';
+              const targetType = inventoryType;
+              fetchNui('loe:holster')
+                .then(() =>
+                  onDrop(
+                    { inventory: 'player', item: { slot: from, name } },
+                    { inventory: targetType, item: { slot: to } }
+                  )
+                )
+                .catch(() => {});
+            }
+            return;
+          }
           if (typeof source?.slot === 'string') {
-            fetchNui('bitirim:unequip', { slot: source.slot, toSlot: item.slot }).catch(() => {});
+            fetchNui('loe:unequip', { slot: source.slot, toSlot: item.slot }).catch(() => {});
           }
           return;
         }
@@ -146,7 +179,7 @@ const InventorySlot: React.ForwardRefRenderFunction<HTMLDivElement, SlotProps> =
       onUse(item);
       return;
     }
-    // Bitirim: TEK SOL TIK -> item bilgi penceresi (tooltip) ac/kapat; slota sabitlenir
+    // Loe: TEK SOL TIK -> item bilgi penceresi (tooltip) ac/kapat; slota sabitlenir
     // (eskiden hover ile aciliyordu). Bos slotta acik tooltip'i kapat.
     if (isSlotWithItem(item)) {
       const rect = event.currentTarget.getBoundingClientRect();
@@ -162,7 +195,7 @@ const InventorySlot: React.ForwardRefRenderFunction<HTMLDivElement, SlotProps> =
     }
   };
 
-  // Bitirim: cift sol tik = item KULLAN. Kiyafet (metadata.wear) icin HIZLI equip
+  // Loe: cift sol tik = item KULLAN. Kiyafet (metadata.wear) icin HIZLI equip
   // yolu (ox useItem'in 200ms/500ms gecikmesini atlar -> aninda giyer); diger
   // itemlerde normal use. Yalniz oyuncu envanterindeki dolu slotlarda.
   const handleDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -170,7 +203,7 @@ const InventorySlot: React.ForwardRefRenderFunction<HTMLDivElement, SlotProps> =
     if (inventoryType !== 'player' || !isSlotWithItem(item) || isHidden) return;
     dispatch(closeTooltip());
     if ((item.metadata as any)?.wear) {
-      fetchNui('bitirim:equip', { slot: item.slot }).catch(() => {});
+      fetchNui('loe:equip', { slot: item.slot }).catch(() => {});
     } else {
       onUse(item);
     }
@@ -184,7 +217,7 @@ const InventorySlot: React.ForwardRefRenderFunction<HTMLDivElement, SlotProps> =
       onContextMenu={handleContext}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      // Bitirim: dolu slotlarin seviye renginde parlamasi icin stil kancasi.
+      // Loe: dolu slotlarin seviye renginde parlamasi icin stil kancasi.
       // isHidden (nakit/telefon) -> bos slot gibi gorunur (has-item yok, gorsel yok).
       className={isSlotWithItem(item) && !isHidden ? 'inventory-slot has-item' : 'inventory-slot'}
       style={{

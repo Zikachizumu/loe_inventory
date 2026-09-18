@@ -1,7 +1,7 @@
 return {
-	--[[ BITIRIM: Sirt cantasi itemleri (bag_lv1..bag_lv5).
+	--[[ LOE: Sirt cantasi itemleri (bag_lv1..bag_lv5).
 	     Kullaninca (Kullan / cift sol tik / sag tik) canta TAKILIR: seviye kalici
-	     yukselir (DB) ve item TUKENIR. Mantik modules/bitirim/server.lua'da
+	     yukselir (DB) ve item TUKENIR. Mantik modules/loe/server.lua'da
 	     qbx CreateUseableItem ile (bag_lv1 -> seviye 1 ...).
 	     - consume/client.status/usetime/export YOK -> item server.UseItem yoluna
 	       duser (qbx). Ikon isim yakinsamasiyla web/images/bag_lv1.png .. bag_lv5.png.
@@ -47,12 +47,12 @@ return {
 		description = '90 KG - 35 Slot',
 	},
 
-	--[[ BITIRIM: GENERIC KIYAFET base item'i ('apparel') — VERI-GUDUMLU KATALOG.
+	--[[ LOE: GENERIC KIYAFET base item'i ('apparel') — VERI-GUDUMLU KATALOG.
 	     Tum kiyafetler TEK bu item'dir; parca bilgisi item METADATA'sinda durur
 	     (metadata.label = gorunen ad, metadata.image = envanter gorseli,
 	      metadata.rarity, metadata.wear = { slot, drawable, texture } veya
-	      { slot, male={..}, female={..} }). Market (bitirim_724) satista bu
-	     metadata'yi yazar; oyuncu use edince modules/bitirim/equipment_server.lua
+	      { slot, male={..}, female={..} }). Market (loe_724) satista bu
+	     metadata'yi yazar; oyuncu use edince modules/loe/equipment_server.lua
 	     metadata.wear'i okuyup giydirir. Boylece yeni parca = katalog verisi +
 	     ikon PNG (parca basina item tanimi GEREKMEZ).
 	     - component/tint/consume YOK -> use akisi server.UseItem'a duser (qbx).
@@ -66,7 +66,7 @@ return {
 	},
 
 	--[[ LEGACY: eski named kiyafet itemleri (mask_black vb.). Yeni katalog 'apparel'
-	     + metadata kullanir; bunlar geriye uyumluluk icin data/bitirim_clothing.lua
+	     + metadata kullanir; bunlar geriye uyumluluk icin data/loe_clothing.lua
 	     items map'i uzerinden calismaya devam eder. ]]
 	['mask_black'] = {
 		label = 'Siyah Maske',
@@ -242,7 +242,7 @@ return {
 		weight = 160,
 	},
 
-	-- BITIRIM: Ev soygunu itemleri
+	-- LOE: Ev soygunu itemleri
 ['stolen_watch'] = {
         label = 'Stolen Watch',
         weight = 200,
@@ -291,7 +291,7 @@ return {
         description = 'For cracking safes.'
 },
 
-	-- BITIRIM: Telefon ENVANTER ITEM'i DEGIL (GrandRP mantigi). npwd 'PhoneAsItem=false'
+	-- LOE: Telefon ENVANTER ITEM'i DEGIL (GrandRP mantigi). npwd 'PhoneAsItem=false'
 	-- ile calisir (M tusu telefonu acar, item aramaz). Item tanimi sadece eski/kalan
 	-- kayitlar bozulmasin diye duruyor; yuklemede envanterden temizlenir (slot bosalir).
 	-- npwd:setPhoneDisabled cagrilari KALDIRILDI ki item silinince telefon kapanmasin.
@@ -349,9 +349,9 @@ return {
 			-- effect'i (sadece SetPedArmour 100 uygular, gorsel/panel/slot YOK) bu event
 			-- yuzunden hem SET EDILMEZ (modules/items/client.lua guard) hem CAGRILMAZ
 			-- (client.lua use dispatch event'i effect'ten once return eder). Use ->
-			-- bitirim:client:useArmour -> equipSlot -> equip(): armour slotu + gorsel
+			-- loe:client:useArmour -> equipSlot -> equip(): armour slotu + gorsel
 			-- yelek (component 9) + zirh degeri (wear.armour) + panelde gozukur.
-			event = 'bitirim:client:useArmour'
+			event = 'loe:client:useArmour'
 		}
 	},
 
@@ -369,8 +369,57 @@ return {
 		}
 	},
 
+	-- LOE: Telefon hatti karti. 24/7 markette (loe_724) satilir.
+	-- Duz envanter item'i -- npwd / telefon sistemine BAGLI DEGIL, kullaninca
+	-- efekti yok. Ikon web/images/simcard.png (item adiyla ayni).
+	['simcard'] = {
+		label = 'SIM Card',
+		weight = 10,
+		stack = true,
+		close = false,
+		description = 'Kontorlu telefon hatti karti.',
+	},
+
 	['scrapmetal'] = {
 		label = 'Scrap Metal',
 		weight = 80,
 	},
+
+	-- LOE: Balikcilik (loe_fishing). Kaynak: ox_inventory_items_reference.lua
+	-- ([loe]/loe_fishing icinde). Ikonlar web/images/ icine kopyalandi
+	-- (fish_* + fishingrod1.png); fish_carp/fish_catfish/fish_trout icin gorsel yok.
+	['fishingrod1'] = {
+		label = 'Starters Fishing Rod',
+		weight = 1000,
+		stack = true,
+		close = true,
+		client = {
+			export = 'loe_fishing.useRod',
+		},
+	},
+
+	['fish_net'] = {
+		label = 'Fishing Net',
+		weight = 2000,
+		stack = true,
+		close = true,
+		server = {
+			export = 'loe_fishing.useFishNet',
+		},
+	},
+
+	-- Tatli su baliklari
+	['fish_carp'] = { label = 'Carp', weight = 1500, stack = true, close = false },
+	['fish_catfish'] = { label = 'Catfish', weight = 3000, stack = true, close = false },
+	['fish_trout'] = { label = 'Trout', weight = 1200, stack = true, close = false },
+
+	-- Tuzlu su baliklari
+	['fish_bass'] = { label = 'Bass', weight = 1200, stack = true, close = false },
+	['fish_seabream'] = { label = 'Seabream', weight = 1200, stack = true, close = false },
+	['fish_bluefish'] = { label = 'Bluefish', weight = 1200, stack = true, close = false },
+
+	-- Acik deniz / Premium baliklar
+	['fish_shark'] = { label = 'Shark', weight = 15000, stack = true, close = false },
+	['fish_whale'] = { label = 'Whale', weight = 40000, stack = true, close = false },
+	['fish_turbot'] = { label = 'Turbot', weight = 2500, stack = true, close = false },
 }

@@ -43,9 +43,9 @@ const InventoryContext: React.FC = () => {
   const dispatch = useAppDispatch();
   const item = contextMenu.item;
 
-  // Bitirim: item su an kusaniliysa (giyili silah), "Use" yerine "Unequip".
+  // Loe: item su an kusaniliysa (giyili silah), "Use" yerine "Unequip".
   const isEquipped = !!item && item.slot === equippedSlot;
-  // Bitirim: kiyafet (metadata.wear tasiyan) item -> "Use" yerine "Equip". Envanterdeki
+  // Loe: kiyafet (metadata.wear tasiyan) item -> "Use" yerine "Equip". Envanterdeki
   // kiyafet her zaman cikarilmis durumda oldugu icin etiket "Equip".
   const isClothing = !!item && !!(item.metadata as any)?.wear;
   const useLabel = isClothing
@@ -54,7 +54,7 @@ const InventoryContext: React.FC = () => {
       ? Locale.ui_unequip || 'Unequip'
       : Locale.ui_use || 'Use';
 
-  // Bitirim: karakter panelindeki GIYILI ekipman slotuna sag tik -> sadece "Unequip".
+  // Loe: karakter panelindeki GIYILI ekipman slotuna sag tik -> sadece "Unequip".
   const equipSlot = contextMenu.equipSlot;
 
   const handleClick = (data: DataProps) => {
@@ -62,9 +62,9 @@ const InventoryContext: React.FC = () => {
 
     switch (data && data.action) {
       case 'use':
-        // Bitirim: kiyafet -> hizli equip yolu (ox useItem gecikmesini atla).
+        // Loe: kiyafet -> hizli equip yolu (ox useItem gecikmesini atla).
         if (isClothing) {
-          fetchNui('bitirim:equip', { slot: item.slot }).catch(() => {});
+          fetchNui('loe:equip', { slot: item.slot }).catch(() => {});
         } else {
           onUse({ name: item.name, slot: item.slot });
         }
@@ -118,7 +118,7 @@ const InventoryContext: React.FC = () => {
       <Menu>
         <MenuItem
           onClick={() => {
-            fetchNui('bitirim:unequip', { slot: equipSlot }).catch(() => {});
+            fetchNui('loe:unequip', { slot: equipSlot }).catch(() => {});
             dispatch(closeContextMenu());
           }}
           label="Unequip"
@@ -131,7 +131,7 @@ const InventoryContext: React.FC = () => {
     <>
       <Menu>
         <MenuItem onClick={() => handleClick({ action: 'use' })} label={useLabel} />
-        {/* Bitirim: 'Give' yerine 'Divide' — yalnizca stack'li (count>1) itemlerde. */}
+        {/* Loe: 'Give' yerine 'Divide' — yalnizca stack'li (count>1) itemlerde. */}
         {item && isSlotWithItem(item) && item.count > 1 && (
           <MenuItem
             onClick={() => {

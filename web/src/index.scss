@@ -1,5 +1,5 @@
 /* =============================================================================
-   BITIRIM INVENTORY — tema temeli
+   LOE INVENTORY — tema temeli
    -----------------------------------------------------------------------------
    Onaylanmis mockup'in tasarim sistemi. Tum sinif isimleri upstream
    ox_inventory ile AYNI birakildi; sadece gorunum degisti, layout/JSX degil.
@@ -9,6 +9,26 @@
    baglandiginda tek yapilacak sey <html> uzerine data-lv="1..5" yazmak —
    asagidaki :root[data-lv] bloklari geri kalanini hallediyor.
    ========================================================================== */
+
+/* Loe: GLOBAL box-sizing:border-box (kullanici istegi 2026-09-10 -- slot
+   olculerini esitleme sirasinda bulundu GERCEK KOK NEDEN).
+   Varsayilan content-box'ta bir CSS Grid ogesi (ornegin canta gridindeki
+   .inventory-slot) `width:90px + border:1px` alip grid HUCRESINE (track) TAM
+   OTURTULMAYA (stretch) calisinca, tarayici CONTENT genisligini 88px'e
+   KISALTIYORDU (88+1+1=90 -> tam grid hucresi). Ayni .inventory-slot, grid
+   DISINDA (Fast Access sirasi, karakter equip slotlari -- duz flex/blok)
+   BU KISALTMAYA UGRAMIYOR, 90+1+1=92px olarak ciziliyordu. Sonuc: AYNI CSS
+   kurali, baglama gore 88px ile 92px arasinda FARKLI boyutta slot uretiyordu
+   (kullanici sikayeti: "Fast Access slotlari diger slotlardan farkli").
+   border-box ile `width:90px` ARTIK border DAHIL toplam olcudur -> HER
+   BAGLAMDA (grid ici/disi) slot tam 90x90px olur, --slot-sz'nin tum dosyada
+   varsayilan ANLAMIYla (panel/grid yukseklik hesaplari da 90'i DIS olcu
+   sayar) BIREBIR eslesir. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
 :root {
   /* --- yuzeyler: %75 OPAK (arkada oyun %25 gorunur) — kullanici istegi 08-07 --- */
@@ -40,6 +60,61 @@
   --grid-cols: 7;
   --grid-rows: 5; /* 35 grid slotu 7 sutunda = 5 tam sira (son 5 slot kaldirildi) */
   --gap: 6px;
+
+  /* Loe: TEK SABIT PENCERE OLCUSU (kullanici istegi 2026-09-10) — Karakter,
+     Torpido/Bagaj VE Drop panelleri (envanterin SOL/UST hucresi, sirayla birbirinin
+     yerine gecer) artik AYNI genislik+yukseklikte.
+
+     GENISLIK REFERANSI = SAG TARAF (Envanter/PlayerPanel), kullanici istegi:
+     "Sağ kısım ne kadar ise sol tüm kısımlar o ölçüyle eşitlensin." Envanter
+     paneli de AYNI 7 sutunluk slot dizilimini (Fast Access + Backpack) kullandigi
+     icin ayni formulle (7 sutun + kendi padding+border'i) DOGAL olarak TAM BU
+     genislige gelir -- --panel-w BOYLECE Envanter'in gercek genisligiyle
+     ESLESIR (olcum: playerPanel dogal genisligi = 700px, asagidaki formul de
+     700px verir). YUKSEKLIK REFERANSI = Drop panelinin 7x8 (56 slot) olcusu
+     (DIKKAT: shared.dropslots (init.lua, 7*8=56) ile ESLESMELI); Envanter'in
+     KENDI yuksekligi metin/karta bagli oldugu icin sabit bir formul degil, o
+     yuzden yukseklik icin slot-tabanli Drop olcusu kullaniliyor (Envanter zaten
+     `.bx-inv-bottom{margin-top:auto}` ile fazla/eksik yuksekligi kendiliginden
+     esner). --panel-border, .bx-panel'in border-width'iyle (1px) AYNI olmali;
+     box-sizing:border-box oldugu icin (asagida, global reset) bu formul
+     panellerin DISTAN toplam (border dahil) genislik/yuksekligidir. */
+  --panel-cols: 7;
+  --panel-rows: 8;
+  --panel-pad: 16px; /* .bx-panel'in kendi padding'iyle AYNI olmali */
+  --panel-border: 1px; /* .bx-panel'in kendi border-width'iyle AYNI olmali */
+  --panel-content-w: calc(var(--panel-cols) * var(--slot-sz) + (var(--panel-cols) - 1) * var(--gap));
+  --panel-content-h: calc(var(--panel-rows) * var(--slot-sz) + (var(--panel-rows) - 1) * var(--gap));
+  --panel-w: calc(var(--panel-content-w) + 2 * var(--panel-pad) + 2 * var(--panel-border));
+  --panel-h: calc(var(--panel-content-h) + 2 * var(--panel-pad) + 2 * var(--panel-border));
+
+  /* Loe: BAGAJ (trunk) gridi Envanter'in BACKPACK gridiyle SATIR SATIR
+     hizali olsun diye (kullanici istegi 2026-09-10, ekran goruntusuyle
+     dogrulandi: trunk grid'i panelin en ustunden basliyordu, backpack ise
+     Envanter'de basliktan/Fast Access'ten SONRA basliyordu -> satirlar
+     KAYIYORDU). Bu deger = Envanter panelinin UST kenariyla Backpack gridinin
+     UST kenari ARASINDAKI mesafe (olcum: 207px = border+padding + bx-inv-head
+     + "Fast Access" basligi + hotrow + "Backpack" basligi + aralari, flex
+     gap'ler dahil). Envanter'in ustundeki bu bolumler (baslik/agirlik bari,
+     Fast Access sirasi vb.) DEGISIRSE bu deger de ELLE guncellenmeli (DOM
+     olcumu -- kapali form bir formul degil, TEXT/font yuksekligine bagli). */
+  --trunk-top-offset: 207px;
+
+  /* Loe: TORPIDO (glovebox) ilk slot sirasi Fast Access'in ilk slot
+     sirasiYLA AYNI Y konumunda baslasin diye (kullanici istegi 2026-09-10,
+     ekran goruntusune kirmizi cizgiyle isaretledi: 7 slot dogruydu ama satir
+     hala kayikti). DOGRUDAN OLCULEN DEGERLER (padding degismeden):
+       Fast Access'in ilk slotu, Envanter panelinin ustunden  73px asagida
+       Torpido'nun   ilk slotu, kendi     panelinin ustunden  52px asagida
+     Torpido'nun KENDI basligi (plaka+agirlik) Envanter'in basligindan
+     (agirlik + "Fast Access" basligi) KISA oldugu icin fark var. Asagidaki
+     deger bu FARKI (73-52=21px) temsil eder ve glovebox'un padding-top'una
+     EKLENIR -- boylece hangi baslik ne kadar uzun olursa olsun (ic detaylara
+     GIRMEDEN) ilk slot satiri Fast Access ile TAM hizalanir. Envanter'in
+     basligi/Fast Access ya da Torpido'nun kendi basligi DEGISIRSE bu deger de
+     ELLE yeniden olculup guncellenmeli (DOM olcumu, TEXT/font yuksekligine
+     bagli, kapali form bir formul degil). */
+  --glovebox-extra-top: 21px;
   --r: 16px;
   --r-s: 12px;
   --r-xs: 8px;
@@ -249,7 +324,7 @@ body.inv-dragging {
 }
 
 /* ---------------------------------------------------------------- controls */
-/* Bitirim: alt satirda kompakt yatay serit (adet kutusu islevsel olarak gerekli) */
+/* Loe: alt satirda kompakt yatay serit (adet kutusu islevsel olarak gerekli) */
 .inventory-control {
   display: flex;
   width: 100%;
@@ -449,25 +524,47 @@ body.inv-dragging {
   overflow-y: scroll;
 }
 
-/* Kap (bagaj/torpido/stash) paneli: 6 sutun -> bagaj 36 slot = 6x6.
-   Yukseklik icerige gore, en fazla 6 sira (torpido 5 slotu tek sirada kalir). */
+/* Kap paneli GENEL kural (stash/motel/otel/market -- trunk VE glovebox'un
+   KENDI ozel kurallari var, asagida): 7 sutun (Envanter'deki Fast Access
+   sirasiyla AYNI genislikte, TAM HIZALI), yukseklik icerige gore azami 6 sira. */
 .bx-container .inventory-grid-container {
-  grid-template-columns: repeat(6, var(--slot-sz));
+  grid-template-columns: repeat(7, var(--slot-sz));
   height: auto;
   max-height: calc(6 * var(--slot-sz) + 5 * var(--gap));
 }
 
-/* Drop paneli: 5 sutun -> 25 slot = 5x5; altta karakter statlari. */
+/* Loe: BAGAJ (trunk) — kullanici istegi (2026-09-10): "Bagaj arabanın
+   dışında iken açılan çanta", Envanter'in BACKPACK gridiyle (7 sutun x 5 sira
+   = 35 slot) BIREBIR AYNI olsun ("backpack slot sayısı kadar yap ve yukarı
+   aşağı eşitle"). Gercek arac depolama kapasitesi 35'ten FAZLA olsa bile
+   arayuzde en fazla 35 gosterilir (bkz. RightInventory.tsx MAX_SLOTS_BY_TYPE).
+   --grid-rows/--grid-cols (5/7) Envanter'in backpack gridinde KULLANILAN AYNI
+   degiskenler -> iki grid MATEMATIKSEL OLARAK ozdes boyutta (474px). Genel
+   6-siralik `.bx-container` kuralini (yukarida) ezer (AYNI ozgunlukte, SONRA
+   geldigi icin kazanir). */
+.bx-trunk .inventory-grid-container {
+  max-height: calc(var(--grid-rows) * var(--slot-sz) + (var(--grid-rows) - 1) * var(--gap));
+}
+
+/* Loe: TORPIDO (glovebox) — kullanici istegi (2026-09-10): "araç içindeki
+   araç deposu", 7 slot (TEK sira) ve Fast Access ile TAM hizali. Sutun sayisi
+   zaten 7 (yukaridaki genel kural); slot sayisi 7'ye sabitlendigi icin
+   (RightInventory.tsx) icerik zaten TEK sira olusturur -- ekstra yukseklik
+   kurali GEREKMEZ (panel .bx-panel.bx-character/.bx-container/.bx-drop
+   kuralindan --panel-h alir, kisa icerik zaten dikeyde ortalanir). */
+
+/* Drop paneli: 7 sutun x 8 sira = 56 slot; altta karakter statlari. Bu olcu
+   (--panel-cols/--panel-rows) AYNI ZAMANDA Karakter/Torpido panellerinin de
+   SABIT pencere boyutu referansidir (yukarida :root). Slot sayisi init.lua ->
+   `shared.dropslots` ile ESLESMELI (56). */
 .bx-drop .inventory-grid-container {
-  grid-template-columns: repeat(5, var(--slot-sz));
+  grid-template-columns: repeat(var(--panel-cols), var(--slot-sz));
   height: auto;
-  max-height: calc(5 * var(--slot-sz) + 4 * var(--gap));
-}
-.bx-drop-stats {
-  margin-top: auto; /* statlari panelin altina it */
-}
-.bx-drop-stats .bx-stats {
-  width: 100%;
+  max-height: calc(var(--panel-rows) * var(--slot-sz) + (var(--panel-rows) - 1) * var(--gap));
+  /* Grid KUTUSU panel genisligine stretch olur; sabit genislikteki 7 sutun
+     icerde SOLA yaslanmasin diye grid track'leri yatayda ortalanir
+     (.bx-container ile ayni yontem). */
+  justify-content: center;
 }
 
 /* ---------------------------------------------------------------- slots */
@@ -516,7 +613,7 @@ body.inv-dragging {
   }
 }
 
-/* Bitirim: item ADI slotta GIZLI (gorseli kapatiyordu). Isim tooltip'te (hover) gorunur. */
+/* Loe: item ADI slotta GIZLI (gorseli kapatiyordu). Isim tooltip'te (hover) gorunur. */
 .inventory-slot-label-box {
   display: none;
 }
@@ -775,7 +872,7 @@ body.inv-dragging {
 }
 
 /* =============================================================================
-   BITIRIM YERLESIM — pencere, ust bar, karakter paneli, makro sutunu,
+   LOE YERLESIM — pencere, ust bar, karakter paneli, makro sutunu,
    canta karti, ver bari. Sinif oneki: bx-
    ========================================================================== */
 
@@ -786,7 +883,7 @@ body.inv-dragging {
   height: 100%;
 }
 
-/* Bitirim: tam-ekran scrim = TEK opaklik kaynagi, HER YERDE (pencere ici+disi)
+/* Loe: tam-ekran scrim = TEK opaklik kaynagi, HER YERDE (pencere ici+disi)
    AYNI (karakter/depo/bagaj/torpido/envanter arasinda AYIRMA yok — panel-turune-gore
    FARKLI clip-path "delik" acan eski sistem TAMAMEN KALDIRILDI, bkz asagidaki
    .bx-window yorumu). Opaklik degeri: %50 -> %75 -> %25 -> %10 (2026-08-12, ayni
@@ -846,6 +943,40 @@ body.inv-dragging {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-size: 15px;
+}
+
+/* Loe: Karakter/Torpido sekmesi (aractayken, marka alaninin yerinde). */
+.bx-vehtabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+
+  button {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: 160ms;
+
+    &:hover {
+      color: var(--accent-2);
+    }
+
+    &.active {
+      background: var(--accent-dim);
+      color: var(--accent-2);
+      border: 1px solid var(--accent-line);
+      box-shadow: var(--accent-glow);
+    }
+  }
 }
 
 .bx-topbar-right {
@@ -922,45 +1053,114 @@ body.inv-dragging {
   padding: 16px;
 }
 
-/* Karakter paneli VE kap paneli (torpido/bagaj/motel/otel): kutu CERCEVESI
-   (border/baslik/boyut) ENVANTER ile ayni kalir, AMA ic dolgu SEFFAF + backdrop-filter
-   YOK -> ardindaki TEK opaklik kaynagi olan `.bx-scrim`'i (yukarida) DUZ gosterir,
-   kendi ayri bir opak/blur katmani EKLEMEZ (kullanici istegi: karakter/depo/bagaj/
-   torpido/envanter arasinda ayirma olmasin, hepsi ayni opaklikta). Drop paneli bu
-   kuraldan HARIC (genel .bx-panel opak+blur kullanir — kullanici drop'u bu esitleme
-   listesine dahil etmedi). */
-.bx-panel.bx-character,
-.bx-panel.bx-container {
+/* Karakter paneli: kutu CERCEVESI (border/baslik/boyut) ENVANTER ile ayni kalir,
+   AMA ic dolgu SEFFAF + backdrop-filter YOK -> ardindaki TEK opaklik kaynagi olan
+   `.bx-scrim`'i (yukarida) DUZ gosterir, kendi ayri bir opak/blur katmani EKLEMEZ.
+
+   ONCEDEN torpido/bagaj (.bx-container) VE Envanter (.bx-inventory, asagida) de
+   bu kuraldaydi (hepsi ayni seffaflik). Kullanici istegi degisti (2026-09-10):
+   Drop panelinin (asagida, genel .bx-panel'in opak+blur'unu KULLANAN, bu kurala
+   hic girmeyen tek panel) karanlik arka plani artik Envanter + Torpido/Bagaj'a
+   da uygulanacak; SADECE Karakter paneli simdilik SEFFAF kaliyor ("ona az sonra
+   bakacagiz" - kullanici). Yani .bx-container BU LISTEDEN CIKARILDI -> artik
+   Drop gibi genel .bx-panel'in opak+blur'unu kullaniyor. */
+.bx-panel.bx-character {
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
-/* Drop panelinde icerik grid'i KISA olabilir ama panel kutusu PlayerPanel ile ayni
-   yukseklige STRETCH edilir (.bx-body align-items:stretch) -> grid ustte kalip altta
-   bosluk birakiyordu. DIKEY ORTALAMA ile duzeltildi (slot sayisi/duzeni DEGISMEDI). */
+/* Loe: SABIT PENCERE OLCUSU — Karakter/Torpido(Bagaj)/Drop, sirayla
+   birbirinin YERINI ALAN uc panel, artik HEP AYNI genislik+yukseklikte
+   (--panel-w/--panel-h, yukarida :root -> Drop'un 7x8 olcusune esitlenmis).
+   ONCESINDE her biri kendi icerigine gore (auto) boyutlaniyordu -> panel
+   arasi gecince (Karakter <-> Torpido <-> Drop) TUM PENCERE farkli
+   genislik/yukseklige sicriyordu (kullanici bildirdi + olcum dogruladi:
+   karakter 653x842, torpido 653x793, drop(eski 7x7) 700x802 — ucu de farkli).
+   box-sizing:border-box -> --panel-w/h padding'i (16px) ICEREN DIS olcudur. */
+.bx-panel.bx-character,
+.bx-panel.bx-container,
+.bx-panel.bx-drop {
+  box-sizing: border-box;
+  width: var(--panel-w);
+  height: var(--panel-h);
+  flex: none;
+}
+
+/* Icerik grid'i kutunun tam boyutundan KISA olabilir (ozellikle torpido -- 5-6
+   slotluk kucuk araclarda, ya da drop'ta az esya varken). DIKEY ORTALAMA ile
+   kutunun ortasina alinir (slot sayisi/duzeni DEGISMEZ, sadece bos alan ustte/
+   altta esit dagilir). */
+.bx-panel.bx-character,
+.bx-panel.bx-container,
 .bx-panel.bx-drop {
   justify-content: center;
 }
 
-/* Kap panelinde (torpido/bagaj/motel/otel) grid SABIT 6 sutun genisliginde ama
-   grid KUTUSU panel genisligine STRETCH ediliyordu (flex column varsayilan
-   align-items:stretch) -> 6 sutunluk icerik SOLA yasliyip sagda bosluk birakiyordu.
-   Grid'in KENDI justify-content'i (CSS Grid track dagitimi, flex'ten AYRI bir
-   ozellik) ile YATAYDA ortalandi — dikey konum/slot sayisi DEGISMEDI. */
-.bx-container .inventory-grid-container {
-  justify-content: center;
+/* Loe: BAGAJ (trunk) paneli.
+
+   YUKSEKLIK: genel kuraldaki --panel-h'yi (796px, Karakter/Torpido/Drop ile
+   AYNI) KULLANIR -- kullanici ONCE "Backpack gridiyle ayni yukseklikte olsun"
+   dedi (698px'e kucultulmustu), SONRA ekran goruntusuyle DUZELTTI (2026-09-10):
+   "sol kısım arka planı sağ kısım ile alttan ve üstten hizala, üst kısım
+   güzel, alt kısım yanlış" -- yani KARARTILMIS ARKA PLAN Envanter'in TAM
+   ALT KENARINA kadar uzanmali (698px'te alt kisim erken bitiyor, oyun dunyasi
+   gorunuyordu). Bu yuzden height ARTIK OVERRIDE EDILMIYOR -- yukaridaki genel
+   `.bx-panel.bx-container{height:var(--panel-h)}` kuralindan (796px) miras
+   alinir. Grid'in ALTINDA KALAN BOS ALAN sorun DEGIL -- Envanter'de o
+   bosluk "Backpack" kartinin doldurdugu yer, Bagaj'da sadece karanlik arka
+   plan olarak kalir (justify-content:center degil, USTTE sabit -- asagida).
+
+   UST BOSLUK (padding-top): trunk gridi panelin EN USTUNDEN basliyordu,
+   Envanter'de Backpack gridi ise basliktan/Fast Access'ten SONRA basliyordu
+   -> satirlar HIZALI degildi (bu kisim kullanicinin "üst kısım güzel" dedigi,
+   DEGISMEDI). padding-top'u --trunk-top-offset'e (yukarida :root, 207px)
+   esitleyerek trunk gridinin ilk satiri Backpack gridinin ilk satirIYLA AYNI
+   Y konumunda baslar; sonraki satirlar ayni slot-sz+gap kullandigi icin
+   OTOMATIK hizali kalir. border-box oldugundan padding-top'tan border-top
+   (--panel-border) DUSULUR. */
+.bx-panel.bx-trunk {
+  /* justify-content:center genel kuraldan (yukarida, .bx-container icin) miras
+     kalirdi -- panel artik icerikten (474px) COK daha uzun (796px) oldugu icin
+     bu, padding-top'un uzerine EK bir ortalama kaymasi bindirip hizalamayi
+     BOZARDI. USTTE sabitlenir; --trunk-top-offset padding-top'u TEK BASINA
+     dogru konumu verir, ek kaymaya gerek/izin YOK. */
+  justify-content: flex-start;
+  padding-top: calc(var(--trunk-top-offset) - var(--panel-border));
 }
 
-/* Envanter paneli (Fast Access + Backpack): panel KUTUSU cam/blur dolgusu kaldirildi
-   (seffaf). SLOTLAR ise KARAKTER panelindeki (.bx-eq-slot) gibi UNIFORM koyu ton
-   (var(--slot)) -> dolu/bos slot AYNI renkte karartili (has-item --slot-2'ye GECMEZ).
-   Kaplar (trunk/stash/market) ETKILENMEZ (scope: .bx-inventory). */
-.bx-panel.bx-inventory {
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+/* Loe: TORPIDO (glovebox) — kullanici istegi (2026-09-10, ekran
+   goruntusuyle bildirdi): icerik (plaka/agirlik basligi + 7 slotluk sira)
+   genel .bx-container kuralinin (yukarida) ORTALAMASINDAN (justify-content:
+   center) CIKARILIP USTE YASLANDI -- Envanter'de Fast Access da panelin
+   USTUNDE (kendi basligindan hemen sonra) basliyor; torpido koca kutunun
+   ORTASINDA "yuzer" gibi durmasin, ayni sekilde USTTE otursun -> karanlik
+   arka plan ikisinde de ayni bicimde "dolu" gorunur (alttan/ustten hizali). */
+.bx-panel.bx-glovebox {
+  justify-content: flex-start;
+  padding-top: calc(var(--panel-pad) + var(--glovebox-extra-top));
 }
+
+/* Kap panelinde (torpido/bagaj/motel/otel) grid SABIT 6 sutun genisliginde ama
+   grid KUTUSU panel genisligine STRETCH edilir (flex column varsayilan
+   align-items:stretch). ONCEDEN (kullanici istegiyle) ORTALANIYORDU; SONRA
+   kullanici istegi degisti (2026-09-10): torpido slotlari SOLA YASLI olsun ki
+   Envanter panelindeki Fast Access sirasiyla (o da SOLA YASLI, panel
+   padding'inden hemen sonra baslar) HIZALI gorunsun. Grid'in KENDI
+   justify-content'i (CSS Grid track dagitimi, flex'ten AYRI bir ozellik) ile
+   YATAYDA SOLA yaslandi — dikey konum/slot sayisi DEGISMEDI. */
+.bx-container .inventory-grid-container {
+  justify-content: start;
+}
+
+/* Envanter paneli (Fast Access + Backpack): ONCEDEN panel KUTUSU cam/blur
+   dolgusu KALDIRILMISTI (seffaf); kullanici istegiyle (2026-09-10) Drop
+   panelindeki karanlik arka plan Envanter'e de uygulandi -> artik genel
+   .bx-panel'in opak+blur'unu KULLANIYOR (ozel bir override YOK). SLOTLAR hala
+   KARAKTER panelindeki (.bx-eq-slot) gibi UNIFORM koyu ton (var(--slot)) ->
+   dolu/bos slot AYNI renkte karartili (has-item --slot-2'ye GECMEZ) — bu, arka
+   plan degisikliginden BAGIMSIZ, ayrica istenmedigi surece DOKUNULMADI.
+   Kaplar (trunk/stash/market) ETKILENMEZ (scope: .bx-inventory). */
 .bx-inventory .inventory-slot,
 .bx-inventory .inventory-slot.has-item {
   background-color: var(--slot); /* karakter equip slotlariyla AYNI uniform ton */
@@ -998,12 +1198,21 @@ body.inv-dragging {
   gap: var(--gap);
 }
 
-/* ---- Bitirim: canli karakter duzeni (sol slotlar | ped | sag slotlar) ---- */
+/* ---- Loe: canli karakter duzeni (sol slotlar | ped | sag slotlar) ---- */
 .bx-char-body {
   flex: 1;
   display: flex;
   gap: 22px; /* sol/sag slot sutunlari ile ortadaki ped arasi bosluk (genis) */
   align-items: stretch;
+}
+
+/* Araç içinde: orta canli-karakter penceresi kaldirildi (kullanici istegi
+   2026-09-10). Iki ekipman slotu sutunu panelin ORTASINA, rahat bir boslukla
+   yerlesir -> "karaktersiz bos cam" gorunmez. Slot boyutu/sayisi DEGISMEZ. */
+.bx-char-body.bx-char-slots-only {
+  justify-content: center;
+  align-items: center;
+  gap: 72px;
 }
 
 /* dikey slot sutunu (karakterin solu/sagi) */
@@ -1022,7 +1231,7 @@ body.inv-dragging {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  /* Bitirim: char-view SEFFAF (opaklik KALDIRILDI) + scrim/window-bg'de DELIK
+  /* Loe: char-view SEFFAF (opaklik KALDIRILDI) + scrim/window-bg'de DELIK
      (index.tsx) -> klon (oyun render) arkada tam parlaklikta net gorunur. Kamera DEGISMEZ. */
   background: transparent;
   border-radius: var(--r);
@@ -1060,7 +1269,7 @@ body.inv-dragging {
   }
 }
 
-/* Bitirim: alt-sol hucre = statbar. 2x2 grid'de Surukle&Ver ile AYNI satirda
+/* Loe: alt-sol hucre = statbar. 2x2 grid'de Surukle&Ver ile AYNI satirda
    (align-items:stretch) -> yuksekligi otomatik olarak Ver penceresiyle esit. */
 .bx-statsbar {
   display: flex;
@@ -1115,7 +1324,7 @@ body.inv-dragging {
     border-color: var(--accent-line);
     background-color: var(--slot);
   }
-  /* Bitirim: uyumlu kiyafet suruklenirken bu slot "buraya uygun" vurgusu alir
+  /* Loe: uyumlu kiyafet suruklenirken bu slot "buraya uygun" vurgusu alir
      (item slot ustunde OLMASA bile). Uzerine gelince (dropover) guclenir. */
   &.bx-eq-droppable {
     border-color: var(--accent);
@@ -1127,6 +1336,22 @@ body.inv-dragging {
     background-color: var(--accent-dim);
     box-shadow: 0 0 0 2px var(--accent), var(--accent-glow);
     transform: scale(1.05);
+  }
+  /* Loe: envanterde giyilebilir item'e TIKLAYINCA hedef slot parlar (nabiz gibi). */
+  &.bx-eq-highlight {
+    border-color: var(--accent);
+    color: var(--accent);
+    animation: bx-eq-pulse 1.1s ease-in-out infinite;
+  }
+}
+
+@keyframes bx-eq-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px var(--accent), 0 0 8px -2px var(--accent);
+  }
+  50% {
+    box-shadow: 0 0 0 2px var(--accent), var(--accent-glow);
   }
 }
 
@@ -1145,6 +1370,20 @@ body.inv-dragging {
 .bx-eq-slot.has-item .bx-eq-num {
   color: var(--accent);
   opacity: 0.9;
+}
+
+/* mermi slotundaki ADET rozeti — sol alt, gorselin ustunde okunur kalsin. */
+.bx-eq-count {
+  position: absolute;
+  bottom: 3px;
+  left: 5px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 
 .bx-eq-caption {

@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '.';
 
 /**
- * Bitirim — canta seviyesi (0-5).
+ * Loe — canta seviyesi (0-5).
  *
  * Seviye 0 = CANTASIZ: sadece 5 makro slotu kullanilir, tum grid kilitli.
  * Yeni oyuncu boyle baslar. 1-5 markette satin alma / kraft ile acilir.

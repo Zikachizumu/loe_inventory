@@ -1,9 +1,29 @@
-# Bitirim Inventory — CHANGELOG
+# LOE Inventory — CHANGELOG
 
 Tüm önemli değişiklikler burada, kronolojik (en yeni üstte). Temel: ox_inventory v2.47.9 fork.
 Sürüm eşlemesi için [`ROADMAP.md`](./ROADMAP.md).
 
 Etiketler: `feat` yeni özellik · `fix` düzeltme · `revert` geri alma · `chore` altyapı.
+
+---
+
+## [Yayımlanmamış] — 2026-09-18  ·  Bitirim → LOE yeniden adlandırması
+
+- **2026-09-18** `chore` **Proje adı `bitirim` → `loe`** (Legends of Empire). Resource klasörü
+  `[loe]/ox_inventory` — resource adı bilerek `ox_inventory` kaldı (gerekçe: `LOE.md`).
+  - Dosyalar: `BITIRIM.md` → `LOE.md`, `data/bitirim_clothing.lua` → `data/loe_clothing.lua`,
+    `modules/bitirim/` → `modules/loe/`, `Bitirim{TopBar,Icons,Hints}.tsx` → `Loe*.tsx`.
+  - NUI/net event'leri `bitirim:*` → `loe:*`, export'lar `Bitirim*` → `Loe*`, ACE `bitirim.admin`
+    → `loe.admin` (`loe_stranger` ile aynı). `web/build` yeniden derlendi; eski build'e aynı
+    dönüşüm uygulanınca yenisiyle bayt bayt aynı → davranış değişikliği yok.
+  - ⚠️ **DB tabloları** `bitirim_equipment` → `loe_equipment`, `bitirim_backpack` → `loe_backpack`.
+    Kodda göç (migration) YOK; mevcut verisi olan bir DB'de bir kez elle:
+    `RENAME TABLE bitirim_equipment TO loe_equipment, bitirim_backpack TO loe_backpack;`
+  - **Değişmeyenler:** GitHub repo adı `bitirim_inventory`; stream varlıkları `bitirim_props.ytyp`
+    ve `bitirim_backdrop01` (binary `.ytyp` içindeki archetype adı — değiştirmek modeli koparır,
+    `docs/props/ytypgen` ile yeniden üretmek gerekir).
+  - UI kaynağı `D:\BitirimUclu\bitirim_inventory`'den alındı: çalışan build oradan derlenmişti,
+    bu kopyanın `web/src`'si geride kalmıştı (`loe:holster` / `loe:switchPanel` kaynakta yoktu).
 
 ---
 

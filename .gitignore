@@ -8,7 +8,7 @@ node_modules
 bin/
 obj/
 
-# Bitirim: web/build BILEREK commit edilir.
+# Loe: web/build BILEREK commit edilir.
 # init.lua acilista 'web/build/index.html' arar; yoksa kaynak hic baslamaz.
 # Sunucuda (Ubuntu) Bun/Node kurulu olmadigi icin derleme orada yapilamaz —
 # lokalde 'cd web && bun run build' calistirip cikti ile birlikte commit ediyoruz.

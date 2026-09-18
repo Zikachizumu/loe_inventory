@@ -1,7 +1,7 @@
 --[[
-    Bitirim — canta seviyesi BACKEND (kalici seviye + gercek agirlik siniri)
+    Loe — canta seviyesi BACKEND (kalici seviye + gercek agirlik siniri)
     -----------------------------------------------------------------------
-    - Seviye her karakter icin `bitirim_backpack` tablosunda saklanir (0-5).
+    - Seviye her karakter icin `loe_backpack` tablosunda saklanir (0-5).
       Yeni oyuncu 0 (cantasiz) baslar.
     - Seviyeye gore GERCEK agirlik siniri uygulanir (Inventory.SetMaxWeight).
     - Seviye client'e gonderilir; client NUI'ye setBagLevel yollar (renk +
@@ -71,7 +71,7 @@ end
 --- Tablo (yoksa olustur). oxmysql hazir (server_scripts'te @oxmysql yuklu).
 CreateThread(function()
     MySQL.query([[
-        CREATE TABLE IF NOT EXISTS `bitirim_backpack` (
+        CREATE TABLE IF NOT EXISTS `loe_backpack` (
             `citizenid` VARCHAR(64) NOT NULL,
             `level` TINYINT UNSIGNED NOT NULL DEFAULT 0,
             PRIMARY KEY (`citizenid`)
@@ -127,12 +127,12 @@ local function applyLevel(source, level)
     pcall(function()
         local inv = Inventory(source)
         if inv then
-            inv.bitirimUsableSlots = HOTBAR_SLOTS + clampLevel(level) * SLOTS_PER_LEVEL
+            inv.loeUsableSlots = HOTBAR_SLOTS + clampLevel(level) * SLOTS_PER_LEVEL
         end
     end)
 
     -- Client: NUI'ye setBagLevel gitsin (renk + kilitli slotlar).
-    TriggerClientEvent('bitirim:client:bagLevel', source, level)
+    TriggerClientEvent('loe:client:bagLevel', source, level)
 end
 
 --- Karakterin seviyesini DB'den yukle (onbellege al).
@@ -142,7 +142,7 @@ local function loadLevel(source)
 
     if levelCache[cid] ~= nil then return levelCache[cid] end
 
-    local row = MySQL.single.await('SELECT `level` FROM `bitirim_backpack` WHERE `citizenid` = ?', { cid })
+    local row = MySQL.single.await('SELECT `level` FROM `loe_backpack` WHERE `citizenid` = ?', { cid })
     local level = clampLevel(row and row.level or 0)
     levelCache[cid] = level
     return level
@@ -158,7 +158,7 @@ local function setLevel(source, level)
     levelCache[cid] = level
 
     MySQL.query.await(
-        'INSERT INTO `bitirim_backpack` (`citizenid`, `level`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `level` = ?',
+        'INSERT INTO `loe_backpack` (`citizenid`, `level`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `level` = ?',
         { cid, level, level }
     )
 
@@ -166,8 +166,8 @@ local function setLevel(source, level)
     return true
 end
 
-exports('BitirimGetBagLevel', function(source) return loadLevel(source) end)
-exports('BitirimSetBagLevel', function(source, level) return setLevel(source, level) end)
+exports('LoeGetBagLevel', function(source) return loadLevel(source) end)
+exports('LoeSetBagLevel', function(source, level) return setLevel(source, level) end)
 
 --- Kisa bildirim yardimcisi (ox_lib).
 local function notify(source, ntype, description)
@@ -221,7 +221,7 @@ CreateThread(function()
             end)
         end)
         if not ok then
-            print(('[bitirim] %s kullanilabilir item kaydedilemedi: %s'):format(itemName, tostring(err)))
+            print(('[loe] %s kullanilabilir item kaydedilemedi: %s'):format(itemName, tostring(err)))
         end
     end
 end)
@@ -241,7 +241,7 @@ AddStateBagChangeHandler('loadInventory', nil, function(bagName, _, value)
 end)
 
 --- Client envanteri actiginda seviyeyi ister (relog/timing emniyeti).
-lib.callback.register('bitirim:server:getBagLevel', function(source)
+lib.callback.register('loe:server:getBagLevel', function(source)
     local level = loadLevel(source)
     applyLevel(source, level)
     return level
@@ -253,9 +253,9 @@ AddEventHandler('qbx_core:server:playerLoggedOut', function(source)
     if cid then levelCache[cid] = nil end
 end)
 
---- Admin/test: /setcanta [id] [level]  (0-5). ACE: bitirim.admin (konsol serbest).
+--- Admin/test: /setcanta [id] [level]  (0-5). ACE: loe.admin (konsol serbest).
 RegisterCommand('setcanta', function(source, args)
-    if source ~= 0 and not IsPlayerAceAllowed(source, 'bitirim.admin') then
+    if source ~= 0 and not IsPlayerAceAllowed(source, 'loe.admin') then
         return TriggerClientEvent('ox_lib:notify', source, { type = 'error', description = 'Yetkisiz.' })
     end
 
@@ -319,6 +319,6 @@ CreateThread(function()
     end)
 
     if not ok then
-        print(('[bitirim] swapItems kilit hook kaydedilemedi: %s'):format(tostring(err)))
+        print(('[loe] swapItems kilit hook kaydedilemedi: %s'):format(tostring(err)))
     end
 end)

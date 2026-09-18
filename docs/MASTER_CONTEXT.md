@@ -1,9 +1,9 @@
-# Bitirim Inventory — MASTER CONTEXT
+# Loe Inventory — MASTER CONTEXT
 
 > Bu dosya projenin **tek referans belgesidir**. Yeni bir sohbet/geliştirici bunu okuyunca
 > projeyi teknik olarak tamamen anlayıp kaldığı yerden devam edebilmelidir.
 > Kronolojik değişiklikler için [`CHANGELOG.md`](./CHANGELOG.md), sürüm planı için
-> [`ROADMAP.md`](./ROADMAP.md), kurulum/fork notları için kök dizindeki `BITIRIM.md`.
+> [`ROADMAP.md`](./ROADMAP.md), kurulum/fork notları için kök dizindeki `LOE.md`.
 
 Son güncelleme: 2026-08-01
 
@@ -11,7 +11,7 @@ Son güncelleme: 2026-08-01
 
 ## 1. Projenin Amacı
 
-FiveM **Qbox** RP sunucusu (**BİTİRİM UCLU RP**) için, sunucunun görsel kimliğine ve RP
+FiveM **Qbox** RP sunucusu (**Legends of Empire**) için, sunucunun görsel kimliğine ve RP
 mekaniklerine uygun, tamamen özel bir **envanter sistemi**. `ox_inventory` v2.47.9 **fork**
 edilerek hem arayüzü (React NUI) hem sunucu/istemci Lua'sı yeniden şekillendiriliyor.
 
@@ -33,31 +33,31 @@ Hedef deneyim (onaylanmış mockup):
 | Kütüphaneler | `ox_lib`, `oxmysql` |
 | Envanter tabanı | **ox_inventory v2.47.9** (fork) |
 | Kıyafet/görünüm | `illenium-appearance` (ileride entegre edilecek) |
-| Tanışma/kimlik | `bitirim_stranger` (ver özelliği için) |
-| Market | `bitirim_724` (ayrı repo/resource; NUI market, çanta itemlerini satar → `AddItem`) |
+| Tanışma/kimlik | `loe_stranger` (ver özelliği için) |
+| Market | `loe_724` (ayrı repo/resource; NUI market, çanta itemlerini satar → `AddItem`) |
 | Arayüz (NUI) | **React 19 + Vite 8 + TypeScript 6 + Redux Toolkit + react-dnd + SASS** |
 | Derleme | **Bun** (`bun install && bun run build`) |
 | Sunucu | Ubuntu + txAdmin, veritabanı MySQL (oxmysql) |
-| Depo | GitHub `Zikachizumo/bitirim_inventory` (repo adı), sunucuda klasör adı `ox_inventory` |
+| Depo | GitHub `Zikachizumo/loe_inventory` (repo adı), sunucuda klasör adı `ox_inventory` |
 
 > ⚠️ **Kritik kısıt:** Sunucuda dağıtılan klasör ve `fxmanifest` `name` alanı **`ox_inventory`
 > olmak zorunda**, `version` de düz `2.47.9` kalmalı. `bitirim_inventory` olarak yeniden
-> adlandırma + köprü denendi, sunucu açılmadı (detay: `BITIRIM.md`). **Tekrar denenmeyecek.**
+> adlandırma + köprü denendi, sunucu açılmadı (detay: `LOE.md`). **Tekrar denenmeyecek.**
 
 ---
 
 ## 3. Klasör Yapısı
 
 ```
-bitirim_inventory/               (repo adı; sunucuda "ox_inventory")
+loe_inventory/               (repo adı; sunucuda "ox_inventory")
 ├── fxmanifest.lua               resource tanımı (name 'ox_inventory', 2.47.9)
 ├── init.lua                     convar/shared ayarları (playerslots=45, dropslots=25, dropweight)
 ├── client.lua / server.lua      ox çekirdek client/server
 ├── data/
 │   ├── items.lua, weapons.lua   item/silah tanımları
-│   └── vehicles.lua             ⭐ Bitirim: bagaj 36 slot / 999.999 KG, torpido 6 slot / 50 KG
+│   └── vehicles.lua             ⭐ Loe: bagaj 36 slot / 999.999 KG, torpido 6 slot / 50 KG
 ├── modules/
-│   ├── bitirim/                 ⭐ BİZİM modüller
+│   ├── loe/                 ⭐ BİZİM modüller
 │   │   ├── client.lua           stat/kuşanılı-slot/çanta-seviyesi -> NUI; /cantatest (görsel test)
 │   │   └── server.lua           çanta seviyesi DB persistans + SetMaxWeight; /setcanta; exports
 │   ├── inventory/               ox çekirdek envanter mantığı (server.lua ~2700 satır)
@@ -71,33 +71,33 @@ bitirim_inventory/               (repo adı; sunucuda "ox_inventory")
 │   │   ├── index.scss           ⭐ TÜM stiller tek dosyada (tema + layout)
 │   │   ├── components/inventory/
 │   │   │   ├── index.tsx        kök: 2×2 grid düzeni, NUI event yönlendirme
-│   │   │   ├── BitirimTopBar.tsx, CharacterPanel.tsx, CharacterStats.tsx,
-│   │   │   ├── PlayerPanel.tsx, DropPanel.tsx, GiveBar.tsx, BitirimHints.tsx,
-│   │   │   ├── SplitDialog.tsx, BitirimIcons.tsx   ⭐ BİZİM bileşenler
+│   │   │   ├── LoeTopBar.tsx, CharacterPanel.tsx, CharacterStats.tsx,
+│   │   │   ├── PlayerPanel.tsx, DropPanel.tsx, GiveBar.tsx, LoeHints.tsx,
+│   │   │   ├── SplitDialog.tsx, LoeIcons.tsx   ⭐ BİZİM bileşenler
 │   │   │   └── InventoryGrid.tsx, InventorySlot.tsx, InventoryHotbar.tsx,
 │   │   │       InventoryContext.tsx, RightInventory.tsx  (ox, düzenlenmiş)
 │   │   └── store/
 │   │       ├── inventory.ts, tooltip.ts, contextMenu.ts   (ox)
 │   │       └── backpack.ts, playerStatus.ts, equipment.ts, split.ts  ⭐ BİZİM
 │   └── build/                   ⭐ DERLENMİŞ ÇIKTI — repoya dahil, sunucuya bu gider
-├── BITIRIM.md                   fork notları / kurulum / rename kararı
+├── LOE.md                   fork notları / kurulum / rename kararı
 └── docs/                        bu klasör (MASTER_CONTEXT, ROADMAP, CHANGELOG)
 ```
 
-⭐ = Bitirim'e özel eklenen/değiştirilen. Diğerleri upstream ox_inventory.
+⭐ = Loe'e özel eklenen/değiştirilen. Diğerleri upstream ox_inventory.
 
 ---
 
-## 4. Bitirim'e Özel Eklenen Sistemler
+## 4. Loe'e Özel Eklenen Sistemler
 
 1. **Tema + layout reskin** (`web/src/index.scss`, `components/inventory/*`) — cam panel, 2×2
    hizalı düzen, seviye renkleri.
 2. **Çanta seviye sistemi (Bag Level 0-5)** — görsel (renk/kilit/kapasite) + backend
    (DB persistans + gerçek ağırlık sınırı + kilitli slot koruması). Çanta = **item** (`bag_lv1..5`),
    **use ile giyilir** (yalnız yükseltme, çıkarılamaz). Bkz. bölüm 6.
-3. **Karakter panel + statlar** — CAN/ZIRH/AÇLIK/SUSUZLUK, `modules/bitirim/client.lua`'dan.
+3. **Karakter panel + statlar** — CAN/ZIRH/AÇLIK/SUSUZLUK, `modules/loe/client.lua`'dan.
 4. **Divide (yığın bölme) diyaloğu** — sağ tık menüsünde "Give" yerine; %25/%50/%75.
-5. **Ver barı (Sürükle & Ver)** — şimdilik ox `onGive`; ileride `bitirim_stranger` seçici.
+5. **Ver barı (Sürükle & Ver)** — şimdilik ox `onGive`; ileride `loe_stranger` seçici.
 6. **Drop paneli** — 5×5, temiz başlık, altta karakter statları.
 7. **Araç depolama ayarı** (`data/vehicles.lua`) — tüm araçlarda bagaj 6×6 / 999.999 KG,
    torpido 6 slot / 50 KG.
@@ -148,11 +148,11 @@ bitirim_inventory/               (repo adı; sunucuda "ox_inventory")
     oyuncu **use** (Kullan / çift sol tık / sağ tık) ile takar.
   - **Sadece YÜKSELTME:** item seviyesi > mevcut → item tükenir + seviye kalıcı yükselir;
     ≤ mevcut → reddedilir, **item kalır** (düşürme yok, aynı seviye takma yok).
-  - Use handler: `modules/bitirim/server.lua` → qbx `CreateUseableItem` (`equipBag`). Item
+  - Use handler: `modules/loe/server.lua` → qbx `CreateUseableItem` (`equipBag`). Item
     `consume`'suz tanımlı → ox use akışı `server.UseItem` → `QBX:CanUseItem`'a düşer.
   - **UI use tetikleyicileri:** sağ tık → "Kullan"; **çift sol tık** → doğrudan kullan
     (`InventorySlot.tsx` `onDoubleClick`, yalnız oyuncu envanteri).
-  - **724 Market satışı — YAPILDI (ayrı repo `bitirim_724`):** `config/catalog.lua` çanta
+  - **724 Market satışı — YAPILDI (ayrı repo `loe_724`):** `config/catalog.lua` çanta
     kategorisi artık `bag_lv1..bag_lv5` (`kind='item'`) satar → `buyRegularItem`→`AddItem` ile
     item verir (auto-equip DEĞİL). Fiyatlar 5k/10k/15k/20k/25k, etiket "LEVEL N BACKPACK".
     Downgrade koruması use adımında. Kraft (L3-5) opsiyonel/ileride.
@@ -160,26 +160,26 @@ bitirim_inventory/               (repo adı; sunucuda "ox_inventory")
     seviyeye göre `bag_lvN.png` gösterir (seviye değişince güncellenir; Sv.0 boş). Equip
     slotları numaralı. Diğer slotlar hâlâ görsel (illenium köprüsü ileride).
   - Görseller: `web/images/bag_lv1.png..bag_lv5.png` (eklendi).
-- **Backend (kodlandı):** seviye `bitirim_backpack(citizenid, level)` MySQL tablosunda kalıcı;
-  onbellekli. `modules/bitirim/server.lua`.
+- **Backend (kodlandı):** seviye `loe_backpack(citizenid, level)` MySQL tablosunda kalıcı;
+  onbellekli. `modules/loe/server.lua`.
   - Uygulanış: `loadInventory` state bag'inde (ox ile aynı sinyal, +1.5s) + `lib.callback
-    'bitirim:server:getBagLevel'` ile.
-  - Exports: `BitirimGetBagLevel(source)`, `BitirimSetBagLevel(source, level)` (market/kraft
+    'loe:server:getBagLevel'` ile.
+  - Exports: `LoeGetBagLevel(source)`, `LoeSetBagLevel(source, level)` (market/kraft
     bunları çağıracak).
-  - Admin/test: `/setcanta <id> <0-5>` (ACE `bitirim.admin`).
+  - Admin/test: `/setcanta <id> <0-5>` (ACE `loe.admin`).
 - **Frontend:** `store/backpack.ts` (`setBagLevel`, `unlockedGridSlots`, `BAG_CAP_KG`).
   Seviye değişince `<html data-lv="0..5">` yazılır → `:root[data-lv]` tema tokenları değişir.
-  Client `modules/bitirim/client.lua` gerçek seviyeyi `bitirim:client:bagLevel` event'iyle alır.
+  Client `modules/loe/client.lua` gerçek seviyeyi `loe:client:bagLevel` event'iyle alır.
 - **`/cantatest <0-5>`** sadece **görsel** test komutudur (sunucuyu/ağırlığı değiştirmez).
 
 ---
 
 ## 6.5. Kıyafet / Ekipman Sistemi
 
-Giyilen her şey bir **item**'dir. Tek kaynak: `data/bitirim_clothing.lua`
+Giyilen her şey bir **item**'dir. Tek kaynak: `data/loe_clothing.lua`
 (`slots` = panel slotu → GTA hedefi, `underwear` = boş slotun tabanı, `items` = legacy adlı
-parçalar). Server otoriter: `modules/bitirim/equipment_server.lua`, DB tablosu
-`bitirim_equipment` (citizenid → JSON).
+parçalar). Server otoriter: `modules/loe/equipment_server.lua`, DB tablosu
+`loe_equipment` (citizenid → JSON).
 
 - **Giyme:** item use / çift-tık / panele sürükle → `equip()`. Slot doluysa eski parça **önce
   envantere iade** edilir, sonra yenisi girer → bir slotta hep tek parça, üst üste binme yok.
@@ -191,17 +191,17 @@ parçalar). Server otoriter: `modules/bitirim/equipment_server.lua`, DB tablosu
   Bu kural **yalnızca freemode ped'lerde** çalışır; iş/hikâye skinlerinde boş slotlara
   dokunulmaz (uniformayı silmemek için).
 - **`underwear` tablosu** illenium `Config.InitialPlayerClothes`'tan gelir ve
-  `bitirim_clothing/config/config.lua` → `Config.Underwear` ile **senkron tutulmalıdır**.
+  `loe_clothing/config/config.lua` → `Config.Underwear` ile **senkron tutulmalıdır**.
 - **Parça formatları** (`resolvePiece`): ① `apparel` + `metadata.wear = { slot, drawable,
   texture }` (yeni ve tercih edilen — market/mağaza bunu yazar), ② eski `clothing` item'ı
   (metadata kökünde `component|prop` + `drawable` + `texture`; GTA id'sinden slot ters
   haritayla bulunur), ③ legacy adlı item + `clothing.items` map'i.
 - **Görsel:** `metadata.image` ox'un `web/images/<ad>.png`'si, `metadata.imageurl` ise tam
-  URL (mağazanın `nui://bitirim_clothing/...` yolu). Panel önce `imageurl`'e bakar.
+  URL (mağazanın `nui://loe_clothing/...` yolu). Panel önce `imageurl`'e bakar.
 - **Zırh:** `armour` slotu hem görsel yelek (component 9) hem gerçek zırh değeri
   (`wear.armour`) taşır; değer yalnızca armour slotu değişince yazılır.
 
-**bitirim_clothing entegrasyonu:** mağaza `apparel` item'ı verir, `metadata.wear.slot`'u
+**loe_clothing entegrasyonu:** mağaza `apparel` item'ı verir, `metadata.wear.slot`'u
 `config/config.lua` → `Config.Categories[].slot` alanından yazar. O alan bu dosyadaki `slots`
 anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→gloves`, `vest→armour`,
 `pant→pants`, `glass→glasses`, `earing→ears`, `chain→necklace`, `bracelet→ring`).
@@ -215,13 +215,13 @@ anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→glove
 - **Makro sütunu:** grid'in sağında dikey 5 slot (1-5), grid satırlarıyla **hizalı** (makro N ↔ satır N).
 - **Kilitli slotlar:** çanta seviyesine göre `unlockedGridSlots(level)=level*8` sonrası slotlar
   kilitli render edilir (`InventoryGrid` `lockedFrom` prop'u, `.bx-slot-locked`).
-  ✅ **Sunucu tarafı kilit koruması (swapItems hook) YAPILDI** (`modules/bitirim/server.lua`):
+  ✅ **Sunucu tarafı kilit koruması (swapItems hook) YAPILDI** (`modules/loe/server.lua`):
   oyuncunun kendi envanterine (`toType=='player'`) kilitli slota taşı/değiştir/yığın **sunucuda
   reddedilir**; client `cb(success or false)` ile iyimser hareketi geri alır. **FAIL-OPEN:**
   seviye kesin bilinemezse (oyuncu çözülemedi / seviye önbelleğe alınmadı) izin verilir —
   meşru item hareketi asla kesilmez. Kilit formülü: `slot > 5 + level*8` (frontend ile aynı).
   ✅ **`AddItem` yolları da korunuyor:** market/kraft/give/pickup, core `usableSlots(inv)` ile
-  oyuncunun `bitirimUsableSlots` sınırına kadar slot seçer — kilitli slota item gitmez, açık
+  oyuncunun `loeUsableSlots` sınırına kadar slot seçer — kilitli slota item gitmez, açık
   slot dolunca eklenmez. `inv.slots` 45 kalır (client görseli). Bkz. bölüm 13.
 - **Araç depolama** (`data/vehicles.lua`):
   - **Bagaj (trunk):** tüm araçlarda **36 slot (6×6)**, ağırlık 999.999 KG (sınırsız). 6 sütun render.
@@ -235,7 +235,7 @@ anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→glove
 - ox ağırlığı **gram** tutar; arayüz **KG** gösterir (`/1000`).
 - **Oyuncu ağırlık sınırı = çanta seviyesinin kapasitesi.**
   - Görsel: `PlayerPanel` ağırlık barı `BAG_CAP_KG[level]` üzerinden.
-  - Gerçek uygulanış: `modules/bitirim/server.lua` → `Inventory.SetMaxWeight(source,
+  - Gerçek uygulanış: `modules/loe/server.lua` → `Inventory.SetMaxWeight(source,
     BAG_CAP_KG[level]*1000)` (oyuncu yüklenince + seviye değişince). Yani bar hem gösterir
     hem gerçekten sınırlar.
 - **Kaplar:** bagaj/drop 999.999 KG (999999000 g, pratikte sınırsız); torpido 50 KG (50000 g).
@@ -252,7 +252,7 @@ anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→glove
   `--accent-2`, `--accent-ink`, `--accent-dim`, `--accent-line`, `--accent-glow`)
   **seviyeye göre** `:root[data-lv='0'..'5']` ile değişir. Semantik renkler (CAN kırmızı,
   ZIRH mavi, AÇLIK amber, SUSUZLUK cyan, para yeşil) seviyeden bağımsız sabit.
-- **Sınıf ön eki `bx-`** Bitirim'e özel elementlerde. ox'un kendi sınıf isimleri
+- **Sınıf ön eki `bx-`** Loe'e özel elementlerde. ox'un kendi sınıf isimleri
   (`.inventory-slot`, `.inventory-grid-container` vb.) **korunur** (JSX'i bozmamak için).
 - **Layout:** `bx-body` = 2×2 CSS grid, `align-items: stretch` (satırlar eşit yükseklik).
   Slot boyutu `--slot-sz: 9.5vh`. Grid 8 sütun; kaplar 6 sütun; drop 5 sütun.
@@ -271,11 +271,11 @@ anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→glove
 
 ## 10. Kod Yazım Standartları
 
-- **Lua (Bitirim modülleri):** ADDITIVE ol — ox çekirdek dosyalarını mümkünse değiştirme,
-  kendi modülünü (`modules/bitirim/`) ekle. Framework çağrılarını **pcall/guard** ile sar
+- **Lua (Loe modülleri):** ADDITIVE ol — ox çekirdek dosyalarını mümkünse değiştirme,
+  kendi modülünü (`modules/loe/`) ekle. Framework çağrılarını **pcall/guard** ile sar
   (qbx/MySQL hazır değilse boot kırılmasın). Yorumlar Türkçe, ASCII (ç/ş/ı yerine c/s/i —
-  bazı Lua/konsol ortamları için güvenli). Event isimleri `bitirim:client:*` /
-  `bitirim:server:*`.
+  bazı Lua/konsol ortamları için güvenli). Event isimleri `loe:client:*` /
+  `loe:server:*`.
 - **TypeScript/React:** ox'un mevcut sınıf isimlerini ve JSX yapısını koru; yeni bileşenleri
   `bx-` sınıflarıyla ekle. Redux Toolkit slice deseni. `useNuiEvent` ile NUI mesajları,
   `store/*` selektörleri. Gerçek veri gelmeden **uydurma değer gösterme** (veri yoksa o
@@ -288,7 +288,7 @@ anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→glove
 
 ## 11. Performans Kuralları
 
-- **Client döngüleri NUI odaklıyken çalışır:** `modules/bitirim/client.lua` stat/seviye
+- **Client döngüleri NUI odaklıyken çalışır:** `modules/loe/client.lua` stat/seviye
   gönderimini yalnız `IsNuiFocused()` iken ve **değer değiştiyse** yapar (gereksiz
   `SendNUIMessage` yok). Envanter kapalıyken 1000ms, açıkken 500ms tick.
 - **Grid sayfalama:** büyük kaplar (stash) `PAGE_SIZE=48` ile sayfalanır; oyuncu gridi
@@ -307,7 +307,7 @@ anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→glove
 - ✅ Statlar (CAN/ZIRH/AÇLIK/SUSUZLUK) — gerçek veriden.
 - ✅ Çanta 5 seviye **görsel** (renk + kilitli slot + rozet + kapasite) — 0-5, çantasız dahil.
 - ✅ Çanta **backend**: DB'de kalıcı seviye + gerçek ağırlık sınırı (`SetMaxWeight`) +
-  `/setcanta` admin + `BitirimGet/SetBagLevel` exports.
+  `/setcanta` admin + `LoeGet/SetBagLevel` exports.
 - ✅ **Kilitli slot sunucu koruması** — iki katman: (1) swapItems hook (manuel sürükle-bırak),
   (2) core `usableSlots` ile otomatik yerleştirme (market/kraft/give/pickup) kilitli slota gitmez.
   İkisi de fail-open (seviye bilinemezse izin). Açık slot dolunca item eklenmez.
@@ -328,7 +328,7 @@ anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→glove
   olarak metatable'lı **callable table** (`__call`) verildi.
 - ✅ **Kilitli slota `AddItem` yolları** — YAPILDI. Core'a `usableSlots(inv)` yardımcısı eklendi;
   `AddItem` / `GetItemSlots` / `GetSlotForItem` / `GetEmptySlot` otomatik yerleştirme döngüleri
-  oyuncuda `inv.bitirimUsableSlots` (=5+seviye*8) ile sınırlanır. `inv.slots` 45 KALIR (client
+  oyuncuda `inv.loeUsableSlots` (=5+seviye*8) ile sınırlanır. `inv.slots` 45 KALIR (client
   görseli); item market/kraft/give/pickup ile artık kilitli slota gitmez, açık slot dolunca
   eklenmez. Alanı `applyLevel` yazar. Downgrade (admin) edge'i: yüksek slottaki item gizlenir.
 - ✅ **Çanta giyme (item + use)** — YAPILDI (`bag_lv1..5` + qbx `CreateUseableItem`, yalnız yükseltme).
@@ -337,10 +337,10 @@ anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→glove
 - ❌ **Çanta görselleri** — `web/images/bag_lv1.png..bag_lv5.png` placeholder; **sanat** bekleniyor.
 - ❌ **L3-5 kraft** (%30, başarısız = kayıp) — opsiyonel/ileride; **tarifler** kullanıcıdan bekleniyor.
 - ❌ **L0 (çantasız) ağırlık kapasitesi** 10 KG placeholder — onay bekliyor.
-- ✅ **Ekipman giyme sistemi** — YAPILDI (`modules/bitirim/equipment_*.lua`, server-otoriter,
-  DB'de kalıcı). Boş slot artık **underwear**'a düşer; kıyafet mağazası (`bitirim_clothing`)
+- ✅ **Ekipman giyme sistemi** — YAPILDI (`modules/loe/equipment_*.lua`, server-otoriter,
+  DB'de kalıcı). Boş slot artık **underwear**'a düşer; kıyafet mağazası (`loe_clothing`)
   `apparel` + `metadata.wear` ile satar. Bkz. bölüm 6.5.
-- ❌ **Ver barı yakın-oyuncu seçici** (`bitirim_stranger` ile ID+isim / Stranger) — şu an
+- ❌ **Ver barı yakın-oyuncu seçici** (`loe_stranger` ile ID+isim / Stranger) — şu an
   sadece ox `onGive`.
 - ❌ **Araç bagaj kilitleri** (araç seviyesi/modeline göre slot aç/kapa).
 - ❌ **Kozmetik kıyafet-as-item** (tam katalog).
@@ -354,7 +354,7 @@ anahtarlarıyla birebir aynı olmak zorundadır (`torso→jacket`, `arms→glove
    listesi + fiyatlar** (kullanıcıdan) ve **çanta görselleri** (sanat).
 3. **Kraft L3-5** — opsiyonel; tarifler gelince.
 4. **Araç bagaj kilitleri** — seviye/modele göre.
-5. **Ver barı + bitirim_stranger** yakın-oyuncu seçici.
+5. **Ver barı + loe_stranger** yakın-oyuncu seçici.
 6. **Ekipman giyme** (illenium köprüsü: zırh+silah+maske; görsel çanta slotu).
 7. **Kozmetik kıyafet-as-item.**
 
@@ -365,9 +365,9 @@ Detaylı sürüm planı: [`ROADMAP.md`](./ROADMAP.md).
 ## 15. Yeni Sohbet / Geliştirici İçin Teknik Kılavuz
 
 **Depo & dağıtım**
-- Repo: `https://github.com/Zikachizumo/bitirim_inventory`. Sunucuda:
+- Repo: `https://github.com/Zikachizumo/loe_inventory`. Sunucuda:
   `/opt/fivem/artifacts/txData/Qbox_57FBFD.base/resources/[ox]/ox_inventory` (main'in klonu).
-- Klasör + fxmanifest adı `ox_inventory` KALMALI (bkz. bölüm 2 / BITIRIM.md). Rename tekrar denenmez.
+- Klasör + fxmanifest adı `ox_inventory` KALMALI (bkz. bölüm 2 / LOE.md). Rename tekrar denenmez.
 - **Deploy:** sunucuda `git -C '.../[ox]/ox_inventory' pull` + txAdmin `restart ox_inventory`.
   Bazen ilk restart yeni `web/build`'i tam yüklemez → **bir kez daha `restart ox_inventory`**.
 
@@ -390,8 +390,8 @@ Detaylı sürüm planı: [`ROADMAP.md`](./ROADMAP.md).
 **Kritik dosyalar**
 - `data/vehicles.lua` — araç depolama (bagaj/torpido).
 - `init.lua` — `playerslots=45`, `dropslots=25`, `dropweight=999999000`, ikon yolu.
-- `modules/bitirim/server.lua` — çanta backend (DB, SetMaxWeight, /setcanta, exports).
-- `modules/bitirim/client.lua` — stat/seviye/kuşanılı-slot → NUI, `/cantatest`.
+- `modules/loe/server.lua` — çanta backend (DB, SetMaxWeight, /setcanta, exports).
+- `modules/loe/client.lua` — stat/seviye/kuşanılı-slot → NUI, `/cantatest`.
 - `web/src/index.scss` — tüm stiller (`:root[data-lv]` tema).
 - `web/src/components/inventory/index.tsx` — 2×2 düzen + NUI event yönlendirme.
 - `web/src/store/backpack.ts` — seviye/kapasite/açık-slot mantığı.
@@ -400,6 +400,6 @@ Detaylı sürüm planı: [`ROADMAP.md`](./ROADMAP.md).
 - Oyuncu: `exports.qbx_core:GetPlayer(source).PlayerData.citizenid / .metadata`.
 - Kuşanılı silah: `exports.ox_inventory:getCurrentWeapon()`.
 - Ağırlık/slot: `Inventory.SetMaxWeight`, `Inventory.SetSlotCount` (server.lua içi).
-- Çanta: `exports.ox_inventory:BitirimGetBagLevel/BitirimSetBagLevel`.
-- Ver/tanışma: `bitirim_stranger` (ayrı resource) — `Bitirim.Identity.label/isKnown`,
-  `Bitirim.Proximity.tracked` (ayrı VM olduğu için export eklenecek).
+- Çanta: `exports.ox_inventory:LoeGetBagLevel/LoeSetBagLevel`.
+- Ver/tanışma: `loe_stranger` (ayrı resource) — `Loe.Identity.label/isKnown`,
+  `Loe.Proximity.tracked` (ayrı VM olduğu için export eklenecek).

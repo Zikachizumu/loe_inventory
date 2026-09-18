@@ -25,7 +25,7 @@ yardımcı komut:
    ```
 3. **F8 konsolunu** aç. Şöyle bir çıktı görürsün (cinsiyet + her slotun değeri):
    ```
-   [bitirim] Su an giyili degerler — cinsiyet: erkek (male)
+   [loe] Su an giyili degerler — cinsiyet: erkek (male)
      slot      | tip        id | drawable texture
      mask      | component   1 | drawable=52 texture=0
      hat       | prop        0 | drawable=5  texture=0
@@ -55,7 +55,7 @@ Bag/örnek kıyafetlerin yanına yeni item ekle. `consume`/`usetime` **yazma**
 
 ---
 
-## Adım 2 — Slot + görünüm eşlemesi (`data/bitirim_clothing.lua`)
+## Adım 2 — Slot + görünüm eşlemesi (`data/loe_clothing.lua`)
 
 `items` tablosuna item adını, hangi panel slotuna gittiğini ve drawable/texture'ı gir.
 
@@ -114,7 +114,7 @@ Ardından txAdmin `restart ox_inventory` (web/build gelmezse bir kez daha restar
 2. Karakter panelinde slotun dolduğunu ve oyunda ped'e uygulandığını gör.
 3. **Relog** → hâlâ takılı (DB kalıcı).
 4. Panelde dolu slota tıkla → item envantere döner, ped'ten kalkar.
-5. Sorun olursa F8 konsolunda `bitirim`/`equipment` hatalarına bak.
+5. Sorun olursa F8 konsolunda `loe`/`equipment` hatalarına bak.
 
 ---
 

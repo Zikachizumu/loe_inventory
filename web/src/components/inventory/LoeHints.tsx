@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Bitirim — karakter panelinin altindaki kullanim talimatlari (2x2 duzen).
+ * Loe — karakter panelinin altindaki kullanim talimatlari (2x2 duzen).
  * Eski "adet / Use / Give / Close" kontrol panelinin yerini alir.
  *
  * Not: yarim bolme SHIFT+surukle ile hala calisir; talimat listesinden
@@ -14,7 +14,7 @@ const HINTS: { key: string; text: string }[] = [
   { key: 'ESC', text: 'Kapat' },
 ];
 
-const BitirimHints: React.FC = () => (
+const LoeHints: React.FC = () => (
   <div className="bx-hints">
     <p className="bx-panel-title">Kullanım</p>
     <div className="bx-hint-list">
@@ -28,4 +28,4 @@ const BitirimHints: React.FC = () => (
   </div>
 );
 
-export default BitirimHints;
+export default LoeHints;
