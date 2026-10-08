@@ -429,7 +429,7 @@ return {
 	['plank'] = { label = 'Plank', weight = 2000, stack = true, close = false },
 
 	-- Saglik sistemi (loe_jobcreator - server/health)
-	['medikit'] = { label = 'Medkit', weight = 1500, stack = true, close = true, consume = 0, client = { export = 'loe_jobcreator.useMedkit' } },
+	['medikit'] = { label = 'Medkit', weight = 1000, stack = true, close = true, consume = 0, client = { export = 'loe_jobcreator.useMedkit' } },
 	['ilac_grip'] = { label = 'Flu Medicine', weight = 50, stack = true, close = true, consume = 0, client = { export = 'loe_jobcreator.usePill' } },
 	['ilac_mide'] = { label = 'Stomach Medicine', weight = 50, stack = true, close = true, consume = 0, client = { export = 'loe_jobcreator.usePill' } },
 	['ilac_unutkanlik'] = { label = 'Memory Medicine', weight = 50, stack = true, close = true, consume = 0, client = { export = 'loe_jobcreator.usePill' } },
