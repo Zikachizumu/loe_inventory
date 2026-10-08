@@ -422,4 +422,16 @@ return {
 	['fish_shark'] = { label = 'Shark', weight = 15000, stack = true, close = false },
 	['fish_whale'] = { label = 'Whale', weight = 40000, stack = true, close = false },
 	['fish_turbot'] = { label = 'Turbot', weight = 2500, stack = true, close = false },
+
+	-- Oduncu meslegi (loe_jobcreator - server/templates.lua)
+	['axe'] = { label = 'Axe', weight = 3000, stack = false, close = false },
+	['wood_log'] = { label = 'Wood Log', weight = 8000, stack = true, close = false },
+	['plank'] = { label = 'Plank', weight = 2000, stack = true, close = false },
+
+	-- Saglik sistemi (loe_jobcreator - server/health)
+	['medikit'] = { label = 'Medkit', weight = 1500, stack = true, close = true, consume = 0, client = { export = 'loe_jobcreator.useMedkit' } },
+	['ilac_grip'] = { label = 'Flu Medicine', weight = 50, stack = true, close = true, consume = 0, client = { export = 'loe_jobcreator.usePill' } },
+	['ilac_mide'] = { label = 'Stomach Medicine', weight = 50, stack = true, close = true, consume = 0, client = { export = 'loe_jobcreator.usePill' } },
+	['ilac_unutkanlik'] = { label = 'Memory Medicine', weight = 50, stack = true, close = true, consume = 0, client = { export = 'loe_jobcreator.usePill' } },
+	['ems_telsiz'] = { label = 'EMS Radio', weight = 500, stack = false, close = true, consume = 0, client = { export = 'loe_jobcreator.useEmsRadio' } },
 }

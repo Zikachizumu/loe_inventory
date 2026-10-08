@@ -897,7 +897,7 @@ local function registerCommands()
 			-- Loe: aractayken ARTIK torpidoya degil, oyuncunun KENDI CANTASINA
 			-- gecilir (canli karakter klonu gorunur). Torpidoya ust bardaki
 			-- Karakter/Torpido sekmesinden ulasilir (bkz. openGlovebox/loe:switchPanel).
-			-- (openGlovebox hala 'inv2' icin ve o sekme icin kullaniliyor.)
+			-- (openGlovebox yalnizca o sekme icin kullaniliyor; inv2 aractayken bir sey yapmaz.)
 
 			local closest = lib.points.getClosestPoint()
 
@@ -935,7 +935,7 @@ local function registerCommands()
 			end
 
 			if cache.vehicle then
-				return openGlovebox(cache.vehicle)
+				return
 			end
 
 			local entity, entityType = Utils.Raycast(2|16)
@@ -1859,7 +1859,9 @@ RegisterNUICallback('removeAmmo', function(slot, cb)
 	cb(1)
 	local slotData = PlayerData.inventory[slot]
 
-	if not slotData or not slotData.metadata.ammo or slotData.metadata.ammo == 0 then return end
+	if usingItem or not slotData or not slotData.metadata.ammo or slotData.metadata.ammo == 0 then
+		return
+	end
 
 	local success = lib.callback.await('ox_inventory:removeAmmoFromWeapon', false, slot)
 

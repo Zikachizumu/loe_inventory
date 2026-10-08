@@ -115,7 +115,7 @@ else
         -- basip doldurmasi gerekmez. Mermi bitince silah ates edemez (silinmez).
         autoreload = GetConvarBool('inventory:autoreload', true),
         screenblur = GetConvarBool('inventory:screenblur', true),
-        keys = json.decode(GetConvar('inventory:keys', '')) or { 'F2', 'K', 'TAB' },
+        keys = json.decode(GetConvar('inventory:keys', '')) or { 'TAB', 'F2', 'K' },
         enablekeys = json.decode(GetConvar('inventory:enablekeys', '[249]')),
         aimedfiring = GetConvarBool('inventory:aimedfiring', false),
         giveplayerlist = GetConvarBool('inventory:giveplayerlist', false),
@@ -136,7 +136,8 @@ else
         suppresspickups = GetConvarBool('inventory:suppresspickups', true),
         disableweapons = GetConvarBool('inventory:disableweapons', false),
         disablesetupnotification = GetConvarBool('inventory:disablesetupnotification', false),
-        enablestealcommand = GetConvarBool('inventory:enablestealcommand', true)
+        enablestealcommand = GetConvarBool('inventory:enablestealcommand', true),
+        gloveboxseatrestriction = GetConvarInt('inventory:gloveboxseatrestriction', 0) == 1
     }
 
     local ignoreweapons = table.create(0, (client.ignoreweapons and #client.ignoreweapons or 0) + 3)
