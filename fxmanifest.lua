@@ -18,14 +18,14 @@ game 'gta5'
 
     Yani ismi degistirmek mumkun degil. GitHub reposu 'bitirim_inventory'
     olarak kalir; sunucuda dagitilan klasor adi 'ox_inventory' olur.
-    Surum de bagimlilik kontrolleri gecsin diye duz '2.47.9' kalmali
+    Surum de bagimlilik kontrolleri gecsin diye duz '2.48.0' kalmali
     (on-surum eki semver siralamasini bozar).
 ]]
 name 'ox_inventory'
 author 'Loe (fork of Overextended ox_inventory)'
-version '2.47.9'
+version '2.48.0'
 repository 'https://github.com/Zikachizumo/loe_inventory'
-description 'Loe envanteri — ox_inventory 2.47.9 tabanli fork (Qbox)'
+description 'Loe envanteri — ox_inventory 2.48.0 tabanli fork (Qbox)'
 
 dependencies {
     '/server:6116',
@@ -65,12 +65,6 @@ client_scripts {
 }
 
 ui_page 'web/build/index.html'
-
--- Loe: envanter arka plani icin ozel prop archetype'i (hei_mph_cntl2_glass01'i
--- spawn edilebilir yapar). Binary .ytyp CodeWalker ile uretilip stream_enhanced/'e konur;
--- kaynak + adimlar: stream_enhanced/README.md ve docs/props/hei_mph_cntl2_glass01.ytyp.xml.
--- Dosya yoksa acilista zararsiz bir stream uyarisi cikar; dosya eklenince kaybolur.
-data_file 'DLC_ITYP_REQUEST' 'stream_enhanced/bitirim_props.ytyp'
 
 files {
     'client.lua',
