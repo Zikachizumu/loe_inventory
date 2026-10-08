@@ -173,10 +173,9 @@ end
 
 --- Karakter/Torpido sekmesinin gorunup gorunmeyecegini NUI'ye bildirir. Envanter
 --- HER ACILISTA (canta ya da torpido farketmez) gonderilir.
---- setInVehicle: oyuncu bir aractaysa true -> NUI Karakter panelinde canli 3B
---- karakter alanini KALDIRIR (kullanici istegi 2026-09-10: "aracta iken karakter
---- gorunumunu kaldir"), sadece ekipman slotu sutunlari kalir. Studio sahnesinin
---- kendisi de aractayken hic acilmaz (bkz. modules/loe/character_client.lua).
+--- setInVehicle: oyuncu bir aractaysa true. (2026-10-09'dan beri Karakter paneli
+--- aracta da canli karakteri gosterir -- klon aracin yaninda durur, bkz.
+--- modules/loe/preview_manager.lua; NUI bu degeri artik panel icin kullanmiyor.)
 local function pushVehicleGlovebox()
 	SendNUIMessage({ action = 'setVehicleGlovebox', data = cache.vehicle and vehicleHasGlovebox(cache.vehicle) or false })
 	SendNUIMessage({ action = 'setInVehicle', data = cache.vehicle and true or false })
@@ -879,6 +878,12 @@ if not Utils or not Weapon or not Items or not Inventory then return end
 
 local invHotkeys = false
 
+-- Loe: envanterin en son kapandigi an (GetGameTimer). NUI TAB'i yakalayip envanteri
+-- kapatiyor (web/src/hooks/useExitListener.ts); ayni basis oyunun 'inv' keybind'ine de
+-- ulasirsa envanter kapanir kapanmaz yeniden acilmasin diye kisa bir bekleme uygulanir.
+local lastCloseTime = 0
+local REOPEN_GUARD_MS = 300
+
 ---@type function?
 local function registerCommands()
 	if client.enablestealcommand then
@@ -893,6 +898,8 @@ local function registerCommands()
 			if invOpen then
 				return client.closeInventory()
 			end
+
+			if GetGameTimer() - lastCloseTime < REOPEN_GUARD_MS then return end
 
 			-- Loe: aractayken ARTIK torpidoya degil, oyuncunun KENDI CANTASINA
 			-- gecilir (canli karakter klonu gorunur). Torpidoya ust bardaki
@@ -1008,6 +1015,7 @@ function client.closeInventory()
 
 	if invOpen then
 		invOpen = nil
+		lastCloseTime = GetGameTimer()
 		SetNuiFocus(false, false)
 		SetNuiFocusKeepInput(false)
 		Utils.blurOut()

@@ -40,20 +40,15 @@ local cam_cfg = { dist = 2.55, side = 0.0, height = 0.05, fov = 42.0, look = 0.3
 -- kapanmadan) ONCE yikilir SONRA yeniden kurulur -> CreatePreview'in "zaten aktif"
 -- guard'i yuzunden eski moddan takilip kalinmaz.
 --
--- ARAC ICINDE CANLI 3B KARAKTER ACILMAZ (kullanici istegi 2026-09-10): aractayken
--- "Karakter" sekmesinde soldaki EKIPMAN SLOTLARI (NUI, tamamen ayri) kalir ama
--- studio sahnesi (klon+kamera) hic kurulmaz. Torpido/bagaj gorunumu
--- (showCharacter=false) BUNUN DISINDA — kendi mantigiyla (arac arkadan kadraj,
--- klon gizli) calismaya devam eder.
+-- ARAC ICINDE DE CANLI KARAKTER (2026-10-09, kullanici istegi -- 2026-09-10'daki
+-- "aracta karakter yok" karari geri alindi): klon aracin yaninda ayakta durur,
+-- kadraj yayanla ayni (bkz. preview_manager.lua updateAnchor). Torpido/bagaj
+-- gorunumu (showCharacter=false) kendi mantigiyla (arac arkadan kadraj, klon
+-- gizli) calismaya devam eder.
 RegisterNUICallback('loe:charScene', function(data, cb)
     cb(1)
     local open = type(data) == 'table' and data.open
     local showCharacter = type(data) == 'table' and data.showCharacter ~= false
-
-    if open and showCharacter and IsPedInAnyVehicle(PlayerPedId(), false) then
-        if Preview:IsPreviewActive() then Preview:DestroyPreview() end
-        return
-    end
 
     if open then
         if Preview:IsPreviewActive() then Preview:DestroyPreview() end

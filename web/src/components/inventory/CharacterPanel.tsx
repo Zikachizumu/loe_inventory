@@ -11,7 +11,6 @@ import {
   EquipItem,
 } from '../../store/equipment';
 import { selectLeftInventory } from '../../store/inventory';
-import { selectInVehicle } from '../../store/vehicle';
 import { openContextMenu } from '../../store/contextMenu';
 import { Items } from '../../store/items';
 import { fetchNui } from '../../utils/fetchNui';
@@ -334,11 +333,6 @@ const CharacterPanel: React.FC = () => {
   const clothingMap = useAppSelector(selectClothingMap);
   const highlightSlot = useAppSelector(selectHighlightSlot);
   const leftInventory = useAppSelector(selectLeftInventory);
-  // Araç içindeyken canli 3B karakter alani GOSTERILMEZ (kullanici istegi
-  // 2026-09-10): studio sahnesi aractayken hic acilmaz (character_client.lua),
-  // burada da orta SEFFAF pencereyi kaldirip sadece iki ekipman slotu sutununu
-  // birakiriz -> ortada "karaktersiz bos cam" kalmaz.
-  const inVehicle = useAppSelector(selectInVehicle);
   const dispatch = useAppDispatch();
   let slotNo = 0; // tum slotlara sirali numara (1..N)
 
@@ -451,22 +445,21 @@ const CharacterPanel: React.FC = () => {
     <div className="bx-panel bx-character">
       {/* Baslik yazisi ("Karakter") kaldirildi (kullanici istegi 2026-09-10). */}
 
-      {/* Yayan: 3 sutun (sol slotlar | canli karakter seffaf | sag slotlar).
-          Araçta: orta pencere YOK -> iki slot sutunu ortalanir (bx-char-slots-only). */}
-      <div className={`bx-char-body${inVehicle ? ' bx-char-slots-only' : ''}`}>
+      {/* 3 sutun (sol slotlar | canli karakter seffaf | sag slotlar) -- yayan ve
+          aracta AYNI (2026-10-09: aracta da canli karakter geri geldi; klon aracin
+          yaninda durur, bkz. preview_manager.lua). */}
+      <div className="bx-char-body">
         <div className="bx-eq-col">{LEFT_SLOTS.map(renderSlot)}</div>
 
-        {!inVehicle && (
-          /* Orta: ped OYUN tarafinda arkada render edilir; burasi SEFFAF penceredir.
-             Dondurme: fareyle surukle (butonlar kaldirildi). */
-          <div
-            className="bx-char-view"
-            onMouseDown={onViewDown}
-            onMouseMove={onViewMove}
-            onMouseUp={onViewUp}
-            onMouseLeave={onViewUp}
-          />
-        )}
+        {/* Orta: ped OYUN tarafinda arkada render edilir; burasi SEFFAF penceredir.
+            Dondurme: fareyle surukle (butonlar kaldirildi). */}
+        <div
+          className="bx-char-view"
+          onMouseDown={onViewDown}
+          onMouseMove={onViewMove}
+          onMouseUp={onViewUp}
+          onMouseLeave={onViewUp}
+        />
 
         <div className="bx-eq-col">{RIGHT_SLOTS.map(renderSlot)}</div>
       </div>

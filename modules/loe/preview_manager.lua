@@ -199,6 +199,17 @@ local VEH_CAM_PITCH_MAX     =  25.0 -- alttan bakisin siniri
 local VEH_CAM_FOV     = 50.0  -- arac kadraji icin gorus acisi (karakter FOV'undan BAGIMSIZ)
 local vehCamPitch  = nil    -- arac icin kamera egimi (canta acilirken oyun kamerasindan okunur)
 local vehCamDist   = nil    -- arac icin kamera mesafesi (arac boyuna gore olceklenir)
+local showChar     = true   -- CreatePreview'in showCharacter'i: aracta karakter modu mu (klon aracin yaninda) kap modu mu (vehAnchor) secer
+-- ARACTA KARAKTER MODU (2026-10-09): klon aracin YANINDA ayakta durur, kadraj yayanla ayni (bkz updateAnchor).
+local vehSide      = nil    -- klonun durdugu taraf: -1 sol (surucu), +1 sag; nil = mod kapali
+local vehSideVeh   = nil    -- vehSide'in secildigi arac (arac degisirse taraf yeniden secilir)
+local vehSideFree  = nil    -- secilen tarafta govdeden disari olculen bosluk (kamera mesafesi buradan, bkz scanStudioYaw)
+local vehHalfW     = 1.0    -- arac modelinin yari genisligi (model koordinati)
+local vehBottomZ   = -0.5   -- arac modelinin alt yuzeyi (model koordinati, ~teker alti)
+local vehGroundP, vehGroundZ = nil, nil  -- zemin probu onbellegi: arac durdugu surece prob tekrarlanmaz
+local VEH_SIDE_GAP  = 0.55  -- klonun arac govdesinden uzakligi (m)
+local VEH_SIDE_NEED = 1.80  -- tercih edilen tarafta govdeden disari bundan az bosluk varsa obur taraf denenir
+local PED_ROOT_H    = 1.0   -- ayakta ped'in kok noktasi (GetEntityCoords) ayak tabanindan bu kadar yukarida
 local klonFrozen   = false  -- klon FreezeEntityPosition ile dondurulduysa true (yon yazarken gecici olarak cozmek icin)
 local klonHeading  = 0.0    -- klonun O ANKI yonu; kameranin gercek konumundan turetilir (bkz computeCameraBasis)
 local clonePedShape = nil   -- bu oyun yapisinda calisan ClonePed imzasi ('legacy' | 'modern'); ilk basarili denemede onbellege alinir
@@ -376,8 +387,21 @@ end
 --- tek karede cok sayida pahali prob atmamak icin bolunur (dogruluk icin DEGIL).
 local function scanStudioYaw()
     if not active or not anchorPos then return end
-    -- ARAC ICINDE tarama YAPILMAZ: sahnenin yonu aracin yonudur, mesafeyi de arac
-    -- boyu belirler (bkz updateAnchor). Ferah yon aramak burada anlamsiz olurdu.
+    -- ARACTA KARAKTER: yon sabit (klondan araca dogru), mesafe aracin yanindaki
+    -- olculen bosluktan (bkz pickVehSide) -- yayandaki kuralin aynisi.
+    if vehSide then
+        studioYawTgt = anchorHead
+        local clear = (vehSideFree or 0.0) - VEH_SIDE_GAP
+        if clear >= cfg.camDist - 0.01 then
+            studioCamDist = cfg.camDist
+        else
+            studioCamDist = math.max(MIN_CAM_DIST, clear - CAM_SAFETY_MARGIN)
+        end
+        return
+    end
+    -- ARAC ICINDE (kap gorunumu) tarama YAPILMAZ: sahnenin yonu aracin yonudur,
+    -- mesafeyi de arac boyu belirler (bkz updateAnchor). Ferah yon aramak burada
+    -- anlamsiz olurdu.
     if vehAnchor then
         studioYawTgt, studioCamDist = anchorHead, nil
         return
@@ -671,6 +695,59 @@ local function gameplayCamRot(fallbackYaw)
     end
     return pitch, yaw or fallbackYaw
 end
+--- ARACTA KARAKTER: klonun ayak bastigi zemin. Model alt yuzeyinden (~teker alti)
+--- kisa bir dikey probla gercek zemine (kaldirim vb.) oturtulur; isabet yoksa
+--- (havada/suda) model alt yuzeyi kullanilir. Arac durdugu surece prob tekrarlanmaz.
+local function vehGroundAt(p)
+    if vehGroundP and #(p - vehGroundP) < 0.02 then return vehGroundZ end
+    local z = p.z
+    local handle = optNative('StartExpensiveSynchronousShapeTestLosProbe',
+        p.x, p.y, p.z + 1.0, p.x, p.y, p.z - 1.0, CAM_TEST_FLAGS, 0, 7)
+    if handle then
+        local _, hit, endCoords = optNative('GetShapeTestResult', handle)
+        if (hit == 1 or hit == true) and endCoords then z = endCoords.z end
+    end
+    vehGroundP, vehGroundZ = p, z
+    return z
+end
+
+--- ARACTA KARAKTER: klonun aracin hangi yaninda duracagini BIR KEZ secer. Oyuncunun
+--- koltugu hangi taraftaysa klon o kapidan "inmis" gibi orada durur; o taraf darsa
+--- (duvar/bariyer) ve obur taraf daha ferahsa obur tarafa gecer. Olculen bosluk
+--- kamera mesafesini de belirler (bkz scanStudioYaw). Araclar CAM_TEST_FLAGS'e dahil
+--- olmadigi icin prob oyuncunun kendi aracina takilmaz.
+local function pickVehSide(veh)
+    local okDim, minD, maxD = pcall(GetModelDimensions, GetEntityModel(veh))
+    if okDim and minD and maxD then
+        vehHalfW, vehBottomZ = math.max(math.abs(minD.x), math.abs(maxD.x)), minD.z
+    else
+        vehHalfW, vehBottomZ = 1.0, -0.5
+    end
+
+    local rel = GetOffsetFromEntityGivenWorldCoords(veh, GetEntityCoords(realPed))
+    local first = rel.x > 0.0 and 1 or -1
+    local out = rightOf(GetEntityHeading(veh))
+    local maxDist = VEH_SIDE_GAP + cfg.camDist
+
+    local function clearance(s)
+        local base = GetOffsetFromEntityInWorldCoords(veh, s * vehHalfW, 0.0, vehBottomZ)
+        local free = maxDist
+        for _, h in ipairs(YAW_PROBE_H) do
+            local d = freeDistance(base.x, base.y, base.z + h, out.x * s, out.y * s, maxDist)
+            if d < free then free = d end
+        end
+        return free
+    end
+
+    local side, free = first, clearance(first)
+    if free < VEH_SIDE_NEED then
+        local otherFree = clearance(-first)
+        if otherFree > free then side, free = -first, otherFree end
+    end
+    vehSide, vehSideVeh, vehSideFree = side, veh, free
+    vehGroundP, vehGroundZ = nil, nil
+end
+
 local function updateAnchor()
     if not realPed or not DoesEntityExist(realPed) then return end
 
@@ -686,6 +763,23 @@ local function updateAnchor()
     -- kullanilabilir bir onizleme URETMIYOR.
     local veh = GetVehiclePedIsIn(realPed, false)
     if veh and veh ~= 0 and DoesEntityExist(veh) then
+        -- ARACTA KARAKTER (2026-10-09, kullanici istegi): karakter panelinde klon
+        -- aracin YANINDA (secilen tarafta, govdenin disinda) ayakta durur ve sahne
+        -- yayanla AYNI karakter kadrajini kullanir (vehAnchor nil kalir). Kamera
+        -- klonun disarisinda durup araca dogru bakar -> arka planda arac gorunur.
+        -- Arac hareket ederse ankor ve yon her karede aractan tazelenir.
+        -- Asagidaki "arac merkezi + arkadan kadraj" yolu artik SADECE kap
+        -- gorunumu (torpido/bagaj, showCharacter=false) icindir.
+        if showChar then
+            vehAnchor, vehCamDist, vehCamPitch = nil, nil, nil
+            if vehSideVeh ~= veh then pickVehSide(veh) end
+            local p = GetOffsetFromEntityInWorldCoords(veh, vehSide * (vehHalfW + VEH_SIDE_GAP), 0.0, vehBottomZ)
+            anchorPos  = vector3(p.x, p.y, vehGroundAt(p) + PED_ROOT_H)
+            -- Sahne yonu (kameranin bakisi) = klondan araca dogru.
+            anchorHead = (GetEntityHeading(veh) + 90.0 * vehSide) % 360.0
+            studioYaw, studioYawTgt = anchorHead, anchorHead
+            return
+        end
         -- Ankor ARACIN MERKEZI, yon ARACIN yonu. Kamera formulu kamerayi ankorun
         -- ARKASINA koydugu icin (anchor - ileri * mesafe) sonuc dogrudan "arabanin
         -- arkasindan bakan" normal 3. sahis kadraji olur -- kullanicinin referans
@@ -713,6 +807,7 @@ local function updateAnchor()
         return
     end
     vehAnchor, vehCamDist, vehCamPitch = nil, nil, nil
+    vehSide, vehSideVeh = nil, nil
 
     -- YAYAN: ankor canta acilirken BIR KEZ yakalanir, sonra SABIT kalir. Eskiden
     -- her karede GetEntityCoords(realPed) yaziliyordu -> oyuncu yumruk yiyip geri
@@ -822,7 +917,9 @@ local function cloneMisbehaving()
     end)
     if ok and bad then return true end
     -- Frozen olsa bile bir task klonu itebilir: ankordan belirgin kaydiysa da sifirla.
-    if anchorPos then
+    -- ARACTA KARAKTER modunda ankor arac giderken her karede ilerler (klon ayni
+    -- karede setupStudio ile yetisir) -> bu kontrol orada her kare yanlis alarm verirdi.
+    if anchorPos and not vehSide then
         local c = GetEntityCoords(previewPed)
         if #(vector3(c.x - anchorPos.x, c.y - anchorPos.y, c.z - anchorPos.z)) > 0.20 then return true end
     end
@@ -940,10 +1037,10 @@ end
 --- Her karede cagrilir ("local" modda native kendini sifirlar, o yuzden tazelenir).
 local function applyVisibility(showCharacter)
     local mode = resolveVisMode()
-    -- ARAC ICINDE KLON GIZLENIR: sahne araci cerceveliyor, klon ise aracin
-    -- MERKEZINDE AYAKTA duruyor (klon koltuga oturmaz). Yeni gorunurluk
-    -- yonteminde klon herkese gorunur oldugu icin camlardan "arabanin icinde
-    -- ayakta duran adam" gorunurdu -- kadraji da, digerlerinin gordugunu de bozar.
+    -- ARAC ICINDE KAP GORUNUMUNDE (vehAnchor) KLON GIZLENIR: sahne araci
+    -- cerceveliyor, klon ise aracin MERKEZINDE AYAKTA duruyor (klon koltuga
+    -- oturmaz). Gorunse camlardan "arabanin icinde ayakta duran adam" gorunurdu.
+    -- (Aracta KARAKTER modunda vehAnchor nil, klon aracin yaninda -> gorunur.)
     local wantKlon = showCharacter and not vehAnchor
     if mode == 'local' then
         if realPed and DoesEntityExist(realPed) then SetEntityLocallyInvisible(realPed) end
@@ -1086,6 +1183,8 @@ local function CreatePreview(showCharacter)
     -- thread'deki updateAnchor cagrilari ankora DOKUNMAZ (oyuncu itilse/kosarsa
     -- bile sahne yerinde kalir). ARAC: kilit yok sayilir, takip devam eder.
     anchorLocked = false
+    showChar = showCharacter
+    vehSide, vehSideVeh, vehSideFree = nil, nil, nil
     updateAnchor()
     anchorLocked = true
     dragYaw = 0.0
@@ -1144,6 +1243,16 @@ local function CreatePreview(showCharacter)
         SetEntityCollision(previewPed, false, false)
         FreezeEntityPosition(previewPed, true)
         klonFrozen = true
+        -- ARACTA KARAKTER: klon koltuk noktasindan aracin yanina tasindi. Kemik
+        -- konumlari bir kare sonra guncellendigi icin yukaridaki setupStudio'nun
+        -- olctugu gogus yuksekligi eski noktaya ait olabilir -> bir kare bekleyip
+        -- asagidaki setupStudio'da yeniden olculsun.
+        if vehSide then
+            SetEntityCoordsNoOffset(previewPed, anchorPos.x, anchorPos.y, anchorPos.z, false, false, false)
+            Wait(0)
+            if not active or not previewPed or not DoesEntityExist(previewPed) then return end
+            chestOffsetZ = nil
+        end
     else
         optNative('RequestCollisionAtCoord', anchorPos.x, anchorPos.y, anchorPos.z)
         for _ = 1, 3 do
@@ -1308,6 +1417,8 @@ local function DestroyPreview()
     anchorPos = nil
     anchorHead = 0.0
     anchorLocked = false
+    vehSide, vehSideVeh, vehSideFree = nil, nil, nil
+    vehGroundP, vehGroundZ = nil, nil
     camF = nil
     camR = nil
     compCache = {}

@@ -7,9 +7,9 @@ import type { RootState } from '.';
  * Envanter HER ACILISTA (canta ya da torpido farketmez) client Lua'dan gelir:
  *  - `setVehicleGlovebox` : oyuncu bir aractaysa VE o aracin torpidosu varsa true.
  *    Ust bardaki Karakter/Torpido sekmesi bunu okur (bkz. LoeTopBar.tsx).
- *  - `setInVehicle`       : oyuncu HERHANGI bir aractaysa true. Karakter paneli
- *    bunu okuyup canli 3B karakter alanini kaldirir (kullanici istegi 2026-09-10:
- *    "aracta iken karakter gorunumunu kaldir"); sadece ekipman slotlari kalir.
+ *  - `setInVehicle`       : oyuncu HERHANGI bir aractaysa true. (2026-09-10'da
+ *    Karakter paneli bununla canli karakteri gizliyordu; 2026-10-09'da aracta da
+ *    canli karakter geri geldi, panel artik bunu OKUMUYOR.)
  */
 const initialState: { gloveboxAvailable: boolean; inVehicle: boolean } = {
   gloveboxAvailable: false,

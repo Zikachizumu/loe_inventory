@@ -1206,15 +1206,6 @@ body.inv-dragging {
   align-items: stretch;
 }
 
-/* Araç içinde: orta canli-karakter penceresi kaldirildi (kullanici istegi
-   2026-09-10). Iki ekipman slotu sutunu panelin ORTASINA, rahat bir boslukla
-   yerlesir -> "karaktersiz bos cam" gorunmez. Slot boyutu/sayisi DEGISMEZ. */
-.bx-char-body.bx-char-slots-only {
-  justify-content: center;
-  align-items: center;
-  gap: 72px;
-}
-
 /* dikey slot sutunu (karakterin solu/sagi) */
 .bx-eq-col {
   display: flex;
