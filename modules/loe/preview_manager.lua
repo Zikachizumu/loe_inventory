@@ -59,6 +59,12 @@
     Gercek ped SADECE yerel gizlenir -> preview'da 2. karakter yok; agda arkadaslar beni
     normal/dogru kiyafetli gorur. Appearance senkron: tek kaynak = gercek ped (~150ms diff).
 
+    **GUNCEL (2026-10-09) — yukaridaki not ESKIDIR:** klonun aga kayitli cikmasinin
+    sebebi yanlis ClonePed imzasiydi (heading isNetwork'e gidiyordu). Artik klon
+    dogru imzayla YEREL olusturulur ve duz SetEntityVisible ile gosterilir;
+    SetEntityLocallyVisible bu istemcide gorunmez klonu geri acmadigi icin
+    KULLANILMIYOR. Gercek ped yine SADECE yerel gizlenir. Ayrinti: GORUNURLUK KATMANI.
+
     EXPORT API (exports.ox_inventory:<fn>):
         CreatePreview() DestroyPreview() IsPreviewActive()
         UpdateComponent(c,d,t,p) UpdateProp(p,d,t) UpdateWeapon(hash)
@@ -995,75 +1001,63 @@ end
 ------------------------------------------------------------------------------
 -- GORUNURLUK KATMANI (klonu goster / gercek bedeni gizle)
 ------------------------------------------------------------------------------
--- TERCIH EDILEN YOL ("local"): klon agda HERKESE gorunmez yapilir, sonra HER KARE
--- SADECE BIZDE locally-visible edilir; gercek beden de SADECE BIZDE
--- locally-invisible edilir. Boylece diger oyuncular hicbir sey fark etmez.
--- ANCAK bu iki native FiveM Enhanced'de Lua tarafinda ISIMLE YOK (2026-09-08,
--- kullanici F8 ciktisi: "SetEntityLocallyInvisible/Visible bulunamadi"). Sonucu
--- agirdi: gercek beden gizlenmiyor, klon gorunmez kaliyor -> oyuncu EKRANDA KENDI
--- BEDENINI goruyor. Yon/donme duzeltmeleri calisiyor ama GORUNMEYEN bir seyde
--- calisiyordu; "karakter sirti donuk" ve "fareyle cevirme calismiyor"
--- sikayetlerinin gercek sebebi buydu.
--- IKI YOL VAR (arada "hash ile dene" diye bir kademe DENENDI ve KALDIRILDI, bkz
--- resolveVisMode):
---   1) "local" : isimle bulunan native'ler (Legacy) -- diger oyuncular hicbir sey
---                fark etmez, TERCIH EDILEN yol.
---   2) "global": duz SetEntityVisible -- klon HERKESE gorunur, gercek beden
---                HERKESE gizlenir. Tek oyunculu test sunucusunda fark etmez; canli
---                sunucuda digerleri sizi klon olarak gorur (AYNI yerde, AYNI
---                kiyafette) -- ideal degil ama GARANTI calisir.
---                Kapanista gercek beden MUTLAKA geri gosterilir (DestroyPreview).
-local visMode = nil
-local klonShown = nil   -- "global" modda klonun O ANKI gorunurlugu (sadece degisince yazilir)
+-- KISA TARIHCE:
+--   * 2026-08-12: klon agda gorunmez yapilip her kare SetEntityLocallyVisible ile
+--     sadece bizde aciliyordu, gercek beden SetEntityLocallyInvisible ile gizleniyordu.
+--   * 2026-09-08: bu native'ler rawget(_G, ...) ile arandi; rawget FiveM'in
+--     native'leri _G'ye ILK NORMAL ERISIMDE yukleyen mekanizmasini ATLADIGI icin
+--     native var oldugu halde "yok" sanildi ve "global" moda dusuldu: gercek beden
+--     SetEntityVisible ile AGDA HERKESE gizlendi. Klon diger istemcilere yansimadigi
+--     icin oyuncu digerlerine TAMAMEN SEFFAF gorundu (kullanici bildirdi 2026-10-09:
+--     "canta acinca diger oyuncu beni goremiyor, sadece ID/isim gorunuyor").
+--   * 2026-10-09 (1. deneme): native normal erisimle cozuldu, "local" yola donuldu.
+--     Gercek beden yerel gizlendi (calisti) AMA SetEntityLocallyVisible gorunmez
+--     yapilmis klonu bu istemcide geri ACMADI -> karakter paneli bos kaldi
+--     (kullanici ekran goruntusu).
+--
+-- SIMDIKI YOL (2026-10-09):
+--   * GERCEK BEDEN: her kare SetEntityLocallyInvisible -> SADECE bu istemcide
+--     gizli; diger oyuncular seni canta acikken de normal gorur. Ag uzerinden
+--     (SetEntityVisible) HICBIR durumda gizlenmez.
+--   * KLON: AGA KAYITLI OLMAYAN yerel bir ped (ClonePed isNetwork=false, bkz
+--     CreatePreview) -> duz SetEntityVisible ile acilip kapanir; yerel entity
+--     oldugu icin baska istemcilere hic yansimaz. SetEntityLocallyVisible'a
+--     ihtiyac kalmadi.
+local klonShown = nil   -- klonun O ANKI gorunurlugu (sadece degisince yazilir)
+local localInvisible = nil  -- SetEntityLocallyInvisible (bir kez cozulur)
+local warnedNetClone = false -- "klon aga kayitli olustu" uyarisi oturumda bir kez
 
-local function resolveVisMode()
-    if visMode then return visMode end
-    if type(rawget(_G, 'SetEntityLocallyVisible')) == 'function'
-        and type(rawget(_G, 'SetEntityLocallyInvisible')) == 'function' then
-        visMode = 'local'
-    else
-        -- HASH ile cagirma DENENMIYOR (2026-09-08'de denendi ve GERILEMEYE yol acti):
-        -- Citizen.InvokeNative var olmayan/karsiligi degismis bir native icin de
-        -- HATASIZ donebiliyor, yani "tuttu mu" DOGRULANAMIYOR. Pratikte cagrilardan
-        -- biri tutup digeri tutmadi -> gercek beden gizlendi ama klon acilmadi,
-        -- karakter paneli KOMPLE BOS kaldi (kullanici bildirdi).
-        -- Dogrulanamayan bir yol yerine GARANTI calisan duz SetEntityVisible.
-        visMode = 'global'
-    end
-    print(('^3[loe] gorunurluk yontemi: %s^7'):format(visMode))
-    return visMode
+--- Native'i ADIYLA cozer. rawget KULLANILMAZ (bkz yukaridaki tarihce).
+local function nativeByName(name)
+    local ok, fn = pcall(function() return _G[name] end)
+    return ok and type(fn) == 'function' and fn or nil
 end
 
---- Her karede cagrilir ("local" modda native kendini sifirlar, o yuzden tazelenir).
+--- Her karede cagrilir (SetEntityLocallyInvisible yalnizca o kare icin gecerli).
 local function applyVisibility(showCharacter)
-    local mode = resolveVisMode()
+    if realPed and DoesEntityExist(realPed) and localInvisible then localInvisible(realPed) end
     -- ARAC ICINDE KAP GORUNUMUNDE (vehAnchor) KLON GIZLENIR: sahne araci
     -- cerceveliyor, klon ise aracin MERKEZINDE AYAKTA duruyor (klon koltuga
     -- oturmaz). Gorunse camlardan "arabanin icinde ayakta duran adam" gorunurdu.
     -- (Aracta KARAKTER modunda vehAnchor nil, klon aracin yaninda -> gorunur.)
     local wantKlon = showCharacter and not vehAnchor
-    if mode == 'local' then
-        if realPed and DoesEntityExist(realPed) then SetEntityLocallyInvisible(realPed) end
-        if wantKlon and previewPed and DoesEntityExist(previewPed) then
-            SetEntityLocallyVisible(previewPed)
-        end
-    elseif klonShown ~= wantKlon and previewPed and DoesEntityExist(previewPed) then
-        -- "global" modda gorunurluk kendini SIFIRLAMAZ -> sadece DEGISTIGINDE yaz
-        -- (her kare native cagirmak gereksiz trafik).
+    if klonShown ~= wantKlon and previewPed and DoesEntityExist(previewPed) then
         klonShown = wantKlon
         SetEntityVisible(previewPed, wantKlon, false)
     end
-    -- "global" modda her kare bir sey yapilmaz; gorunurluk acilista BIR KEZ
-    -- ayarlanir ve kapanista GERI ALINIR (bkz beginVisibility + DestroyPreview'daki geri gosterme).
 end
 
---- Acilista bir kez: "global" modda GERCEK BEDENI gizle. Klonun gorunurlugu
---- applyVisibility'nin isi (arac durumuna gore degisebiliyor) -- tek sahip olsun
---- diye buradan cikarildi.
+--- Acilista bir kez: gorunurluk durumunu sifirlar, yerel gizleme native'ini cozer.
+--- Native gercekten yoksa gercek beden gizlenmez (kendi ekraninda klonla ust uste
+--- gorunur) -- digerlerinin seni hic gorememesinden iyidir.
 local function beginVisibility()
     klonShown = nil
-    if resolveVisMode() ~= 'global' then return end
-    if realPed and DoesEntityExist(realPed) then SetEntityVisible(realPed, false, false) end
+    if localInvisible == nil then
+        localInvisible = nativeByName('SetEntityLocallyInvisible') or false
+        if not localInvisible then
+            print('^3[loe] SetEntityLocallyInvisible bulunamadi: gercek beden onizlemede gizlenmeyecek^7')
+        end
+    end
 end
 
 local function CreatePreview(showCharacter)
@@ -1089,14 +1083,18 @@ local function CreatePreview(showCharacter)
     -- gorunuyor" seklinde ortaya cikiyordu, cunku onizleme hic baslamayinca oyuncu
     -- kendi bedenini ve oyunun normal kamerasini goruyor.
     -- COZUM: iki imzayi da SIRAYLA dene, ilk GECERLI entity donduren kazanir.
-    -- Baslangic heading'i ONEMSIZ (setKlonPose zaten her karede dogru yonu yazar),
-    -- bu yuzden bool/float farki gorsel bir sonuc dogurmaz.
     -- Calisan imza ILK basarili denemede onbellege alinir: aksi halde her canta
     -- acilisinda yanlis imza tekrar denenip konsola "Script error in Native
     -- ClonePed" satiri basardi (islev bozulmaz ama gereksiz gurultu).
+    -- SIRA "modern" ONCE (2026-10-09): FiveM'in native tanimi zaten
+    -- ClonePed(ped, isNetwork, bScriptHostPed, copyHeadBlendFlag). "legacy" cagri
+    -- heading'i (sifirdan farkli bir sayi) isNetwork yerine gonderiyordu -> klon
+    -- AGA KAYITLI olusuyordu; 08-12'de "isNetwork=false tutmuyor" diye gorulen sey
+    -- buydu. Gorunurluk katmani artik klonun YEREL olmasina dayaniyor (bkz
+    -- GORUNURLUK KATMANI), o yuzden dogru imza once denenir.
     previewPed = nil
     klonFrozen = false
-    local shapes = clonePedShape and { clonePedShape } or { 'legacy', 'modern' }
+    local shapes = clonePedShape and { clonePedShape } or { 'modern', 'legacy' }
     for _, shape in ipairs(shapes) do
         local ok, ent
         if shape == 'legacy' then
@@ -1117,6 +1115,16 @@ local function CreatePreview(showCharacter)
         print('^1[loe] PreviewManager: ClonePed BASARISIZ (her iki imza da sonuc vermedi)^7')
         previewPed = nil
         return
+    end
+    -- Klon yine de aga kayitli olustuysa (beklenmeyen oyun yapisi) diger oyunculara
+    -- gorunmesin: gercek bedenin uzerine ikinci bir "sen" binmesin.
+    if NetworkGetEntityIsNetworked(previewPed) then
+        local hideFromNet = nativeByName('NetworkSetEntityInvisibleToNetwork')
+        if hideFromNet then pcall(hideFromNet, previewPed, true) end
+        if not warnedNetClone then
+            warnedNetClone = true
+            print(('^3[loe] klon aga kayitli olustu (imza: %s); agdan gizlendi: %s^7'):format(clonePedShape, tostring(hideFromNet ~= nil)))
+        end
     end
     pcall(ClonePedToTarget, ped, previewPed)
     -- Klon ile GERCEK beden birbirine ASLA fizik uygulamasin. Kurulum penceresinde
@@ -1163,14 +1171,10 @@ local function CreatePreview(showCharacter)
     -- (RenderScriptCams'ten sonra) emniyet olarak duruyor.
     SetEntityVelocity(previewPed, 0.0, 0.0, 0.0)
     playIdle()
-    -- GERCEK COZUM: madem klon HER HALUKARDA agda (yukaridaki not), sizinti
-    -- SORUNU YOK ETMEK yerine EKRANDA GIZLEME'YE gecildi. SetEntityVisible(false)
-    -- klonu AGDAKI HERKESE (kendimiz DAHIL) gorunmez yapar -> render loop'ta
-    -- (asagida) HER KARE SetEntityLocallyVisible(previewPed) ile SADECE KENDI
-    -- client'imizda uzerine yazilir. Boylece baska hicbir oyuncu (mesafe/LOD
-    -- ONEMSIZ, garanti) klonu goremez, sadece biz goruruz. `showCharacter=false`
-    -- (kap gorunumlerinde karakter gizli kalsin istegi) icin render loop bu
-    -- override'i hic cagirmaz -> klon bize de gorunmez kalir (eskisiyle ayni sonuc).
+    -- Klon kurulum boyunca GIZLI baslar; render loop (applyVisibility) kamera
+    -- hazir olunca acar. Klon yerel oldugu icin bu gorunurluk baska istemcilere
+    -- yansimaz (bkz GORUNURLUK KATMANI). `showCharacter=false` (kap gorunumleri)
+    -- icin klon gizli kalir.
     -- NOT: bu asamada FreezeEntityPosition/SetEntityCollision HENUZ cagrilmiyor —
     -- bkz asagidaki "INTERIOR ODA/PORTAL KAYDI" notu (previewPed once NIHAI
     -- konumuna tasinip collision'i ACIKKEN bir-iki kare beklemesi gerekiyor).
@@ -1404,9 +1408,8 @@ local function DestroyPreview()
     previewPed = nil
     klonFrozen = false
 
-    -- Gercek bedeni kesin geri goster. "global" gorunurluk modunda bu SART:
-    -- orada gercek beden SetEntityVisible ile HERKESE gizlenmisti, kendiliginden
-    -- geri gelmez (locally-invisible gibi her kare sifirlanan bir sey degil).
+    -- Gercek bedeni kesin geri goster. Artik agda gizlenmiyor (bkz beginVisibility)
+    -- ama emniyet olarak kalir: bir onceki surumun gizledigi beden de geri gelir.
     if realPed and DoesEntityExist(realPed) then
         SetEntityVisible(realPed, true, false)
         ResetEntityAlpha(realPed)
