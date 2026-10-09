@@ -26,8 +26,8 @@ const LoeTopBar: React.FC = () => {
   const onGlovebox = rightInventory.type === 'glovebox';
   const showVehicleTabs = gloveboxAvailable || onGlovebox;
 
-  // Envanter ONCE KAPANIP SONRA istenen taraf ACILIR (client.lua loe:switchPanel) --
-  // ayni anda iki envanteri acik tutmanin guvenli bir yolu yok (kilit/kayit).
+  // Envanter KAPANMADAN istenen taraf acilir (client.lua loe:switchPanel): sunucu
+  // eski ikincil envanteri (torpido) kendisi kapatir, NUI acik kalir -> gecikme yok.
   const switchTo = useCallback(
     (target: 'character' | 'glovebox') => {
       if ((target === 'glovebox') === onGlovebox) return;

@@ -946,35 +946,35 @@ body.inv-dragging {
 }
 
 /* Loe: Karakter/Torpido sekmesi (aractayken, marka alaninin yerinde). */
+/* Karakter / Torpido: tek bir ac-kapa (segmented) kutu DEGIL, kendi cercevesi olan
+   AYRI iki buton (kullanici istegi 2026-10-09). Acik olan taraf vurgulu. */
 .bx-vehtabs {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  gap: 8px;
 
   button {
     appearance: none;
-    border: none;
-    background: transparent;
+    background: var(--surface);
+    border: 1px solid var(--line);
     color: var(--text-2);
     font-weight: 700;
     font-size: 13px;
-    padding: 8px 16px;
-    border-radius: 9px;
+    padding: 8px 18px;
+    border-radius: 10px;
     cursor: pointer;
     transition: 160ms;
 
     &:hover {
       color: var(--accent-2);
+      border-color: var(--accent-line);
     }
 
     &.active {
       background: var(--accent-dim);
       color: var(--accent-2);
-      border: 1px solid var(--accent-line);
+      border-color: var(--accent-line);
       box-shadow: var(--accent-glow);
+      cursor: default;
     }
   }
 }

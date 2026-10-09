@@ -144,8 +144,8 @@ local Inventory = require 'modules.inventory.client'
 	HIC acilmiyordu). YENI DAVRANIS (kullanici istegi, 2026-09-10): aractayken
 	envanter tusu ARTIK OYUNCUNUN KENDI CANTASINI acar. Torpidoya ulasmak icin
 	ust bardaki (eskiden marka logosu olan alanda) "Karakter/Torpido" sekmesi
-	kullanilir -> loe:switchPanel NUI callback'i (asagida) mevcut envanteri
-	kapatip istenen tarafi acar.
+	kullanilir -> loe:switchPanel NUI callback'i (asagida) envanteri kapatmadan
+	istenen tarafi acar.
 ]]
 local function vehicleHasGlovebox(vehicle)
 	if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return false end
@@ -158,17 +158,6 @@ local function vehicleHasGlovebox(vehicle)
 	if checkVehicle == 0 or checkVehicle == 2 then return false end
 
 	return (Vehicles.glovebox[vehicleClass] or Vehicles.glovebox.models[vehicleHash]) and true or false
-end
-
---- Mevcut aracin torpidosunu acar. @return boolean basarili mi.
-local function openGlovebox(vehicle)
-	if not IsPedInAnyVehicle(playerPed, false) or not vehicleHasGlovebox(vehicle) then return false end
-
-	local isOpen = client.openInventory('glovebox', { netid = NetworkGetNetworkIdFromEntity(vehicle) })
-
-	if isOpen then currentInventory.entity = vehicle end
-
-	return isOpen and true or false
 end
 
 --- Karakter/Torpido sekmesinin gorunup gorunmeyecegini NUI'ye bildirir. Envanter
@@ -324,10 +313,14 @@ function client.openInventory(inv, data)
     end
 
 
+    -- Loe: "yerden alma" animasyonu (putdown_low) ARTIK SADECE yerdeki bir drop
+    -- acilinca oynar. Upstream'de trunk disindaki HER acilista (oyuncunun kendi
+    -- cantasi dahil) oynuyordu -> her canta acilisinda karakter yere egiliyordu
+    -- (kullanici bildirdi 2026-10-09).
     if not cache.vehicle then
         if inv == 'player' then
             Utils.PlayAnim(0, 'mp_common', 'givetake1_a', 8.0, 1.0, 2000, 50, 0.0, 0, 0, 0)
-        elseif inv ~= 'trunk' then
+        elseif inv == 'drop' then
             Utils.PlayAnim(0, 'pickup_object', 'putdown_low', 5.0, 1.5, 1000, 48, 0.0, 0, 0, 0)
         end
     end
@@ -903,8 +896,8 @@ local function registerCommands()
 
 			-- Loe: aractayken ARTIK torpidoya degil, oyuncunun KENDI CANTASINA
 			-- gecilir (canli karakter klonu gorunur). Torpidoya ust bardaki
-			-- Karakter/Torpido sekmesinden ulasilir (bkz. openGlovebox/loe:switchPanel).
-			-- (openGlovebox yalnizca o sekme icin kullaniliyor; inv2 aractayken bir sey yapmaz.)
+			-- Karakter/Torpido butonlarindan ulasilir (bkz. loe:switchPanel).
+			-- (inv2 aractayken bir sey yapmaz.)
 
 			local closest = lib.points.getClosestPoint()
 
@@ -2108,12 +2101,17 @@ end)
 	Loe: Karakter <-> Torpido SEKME GECISI (aractayken, ust bar).
 
 	ox mimarisinde iki farkli envanteri (torpido + oyuncunun kendi cantasi) AYNI
-	ANDA acik tutmanin guvenli bir yolu yok -- kilit/senkron/DB kaydi her envanter
-	kendi ac/kapa dongusunde yapilir. Bu yuzden burada da ONCE mevcut envanter
-	KAPATILIR (torpidoysa icerigi sunucuda kaydedilir), SONRA istenen taraf
-	ACILIR. Gecis Fade animasyonu kisa oldugu icin "sekme degisti" hissi verir,
-	veri kaybi/kilit riski olmadan.
+	ANDA acik tutmanin guvenli bir yolu yok. Ama envanteri KAPATMAYA da gerek yok:
+	sunucunun openInventory'si (server.lua) yeni tarafi acmadan once mevcut ikincil
+	envanteri (torpido) zaten kapatip birakir (left:closeInventory + CloseAll).
+	ESKI YOL (2026-10-09'a kadar): client.closeInventory() + yeniden acma. Kapanis
+	200ms bekliyor, NUI fade-out/fade-in yapiyor, studio kamerasi oyuna donup geri
+	geliyordu -> gecis belirgin sekilde gecikiyordu (kullanici bildirdi).
+	YENI YOL: NUI acik kalir, sunucudan tek cagriyla yeni taraf istenir ve sonuc
+	setupInventory ile ekrana basilir. Gecis tek bir sunucu turu kadar surer.
 ]]
+local switchingPanel = false
+
 RegisterNUICallback('loe:switchPanel', function(data, cb)
 	cb(1)
 
@@ -2121,7 +2119,7 @@ RegisterNUICallback('loe:switchPanel', function(data, cb)
 	if target ~= 'character' and target ~= 'glovebox' then return end
 
 	local vehicle = cache.vehicle
-	if not invOpen or not vehicle then return end
+	if not invOpen or not vehicle or switchingPanel then return end
 
 	local onGlovebox = currentInventory.type == 'glovebox'
 	if (target == 'glovebox') == onGlovebox then return end -- zaten istenen tarafta
@@ -2130,13 +2128,45 @@ RegisterNUICallback('loe:switchPanel', function(data, cb)
 		return lib.notify({ id = 'cannot_perform', type = 'error', description = locale('cannot_perform') })
 	end
 
-	client.closeInventory()
-
+	local inv, invData
 	if target == 'glovebox' then
-		openGlovebox(vehicle)
-	else
-		client.openInventory()
+		inv, invData = 'glovebox', { netid = NetworkGetNetworkIdFromEntity(vehicle) }
 	end
+
+	switchingPanel = true
+	local left, right, accessError = lib.callback.await('ox_inventory:openInventory', false, inv, invData)
+	switchingPanel = false
+
+	-- Beklerken envanter kapandiysa (ESC/TAB) kapanis olayi sunucuya bu cagridan
+	-- SONRA ulasir ve yeni acilani da kapatir; burada yapacak bir sey kalmaz.
+	if not invOpen then return end
+
+	if accessError or not left then
+		if accessError then
+			lib.notify({ id = accessError, type = 'error', description = locale(accessError) })
+		end
+		-- Sunucu eski tarafi coktan kapatmis olabilir; ekran onunla tutarsiz kalmasin.
+		return client.closeInventory()
+	end
+
+	currentInventory = right or defaultInventory
+	if target == 'glovebox' then
+		currentInventory.entity = vehicle
+	else
+		defaultInventory.coords = nil
+	end
+	left.items = PlayerData.inventory
+	left.groups = PlayerData.groups
+
+	SendNUIMessage({
+		action = 'setupInventory',
+		data = {
+			leftInventory = left,
+			rightInventory = currentInventory
+		}
+	})
+
+	pushVehicleGlovebox()
 end)
 
 RegisterNUICallback('buyItem', function(data, cb)
