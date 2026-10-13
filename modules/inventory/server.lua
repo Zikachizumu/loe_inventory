@@ -1171,6 +1171,14 @@ function Inventory.AddItem(inv, item, count, metadata, slot, cb)
 
 	if not inv?.slots then return false, 'invalid_inventory' end
 
+	-- Loe: nakit ve telefon envanter ITEM'i degildir (GrandRP mantigi, bkz.
+	-- modules/loe/server.lua). qbx_core her nakit degisiminde exports.ox_inventory:
+	-- SetItem(src, 'money', ...) cagirip item'i geri ekliyordu; item arayuzde gizli
+	-- oldugu icin bos gorunen bir slotu (genelde makro 1) sessizce dolduruyordu.
+	if inv.player and (item.name == 'money' or item.name == 'phone') then
+		return false, 'hud_item'
+	end
+
 	local toSlot, slotMetadata, slotCount
 	local success, response = false
 	local invokingResource = server.loglevel > 1 and GetInvokingResource()

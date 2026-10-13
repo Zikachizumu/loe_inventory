@@ -921,7 +921,8 @@ body.inv-dragging {
   gap: 14px;
   padding: 12px 18px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--accent-dim), transparent), var(--panel);
+  /* Loe: ust bar da genel kutunun parcasi -> %80 opak (bkz. .bx-body). */
+  background: linear-gradient(180deg, var(--accent-dim), transparent), rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(16px) saturate(120%);
   -webkit-backdrop-filter: blur(16px) saturate(120%);
 }
@@ -1030,13 +1031,31 @@ body.inv-dragging {
 /* ---- govde: 2 sutun x 2 satir ---- */
 /* 2x2 grid: satir1 ana kutular, satir2 alt barlar. align-items:stretch her
    hucreyi satir yuksekligine ceker -> ana kutular esit, alt barlar esit. */
+/* Loe: GENEL CANTA KUTUSU (iki ana panelin DISINDAKI alan) %80 OPAK siyah
+   (kullanici istegi 2026-10-13: "sag ve sol karenin dis tarafi, genel canta kutu ici
+   %80 opak"). Paneller (Karakter/Kap/Drop ve Envanter) AYNI kalir: bu katman onlarin
+   ALTINDA, panel dikdortgenleri DELIK birakilarak cizilir -- aksi halde seffaf Karakter
+   panelinin canli klonu da kararirdi (tek bir tam-pencere zemin bunu bozar).
+   Delik konumlari DETERMINISTIK: kutu = padding(--bx-bp) + [sol panel --panel-w] +
+   gap(--bx-bg) + [sag panel --panel-w] + padding; yukseklik --panel-h. Bu yuzden 5 ayri,
+   BIRBIRINE BINMEYEN serit (binerse %80 + %80 = %96 olurdu) + panel koselerini
+   (--r yaricapli yuvarlak) kapatan 8 radyal katman yeterli. Ust bar (.bx-topbar) ayri.
+   --bx-bp / --bx-bg asagidaki padding/gap ile AYNI degerdir (tek yerden okunur). */
 .bx-body {
+  --bx-outer: rgba(0, 0, 0, 0.8);
+  --bx-bp: 16px;
+  --bx-bg: 14px;
+  --bx-c: var(--r);
   display: grid;
   grid-template-columns: auto auto;
-  gap: 14px;
-  padding: 16px;
+  gap: var(--bx-bg);
+  padding: var(--bx-bp);
   align-items: stretch;
   justify-content: center;
+  background-repeat: no-repeat;
+  background-image: linear-gradient(var(--bx-outer), var(--bx-outer)), linear-gradient(var(--bx-outer), var(--bx-outer)), linear-gradient(var(--bx-outer), var(--bx-outer)), linear-gradient(var(--bx-outer), var(--bx-outer)), linear-gradient(var(--bx-outer), var(--bx-outer)), radial-gradient(circle at 100% 100%, transparent calc(var(--bx-c) - 0.5px), var(--bx-outer) var(--bx-c)), radial-gradient(circle at 0 100%, transparent calc(var(--bx-c) - 0.5px), var(--bx-outer) var(--bx-c)), radial-gradient(circle at 100% 0, transparent calc(var(--bx-c) - 0.5px), var(--bx-outer) var(--bx-c)), radial-gradient(circle at 0 0, transparent calc(var(--bx-c) - 0.5px), var(--bx-outer) var(--bx-c)), radial-gradient(circle at 100% 100%, transparent calc(var(--bx-c) - 0.5px), var(--bx-outer) var(--bx-c)), radial-gradient(circle at 0 100%, transparent calc(var(--bx-c) - 0.5px), var(--bx-outer) var(--bx-c)), radial-gradient(circle at 100% 0, transparent calc(var(--bx-c) - 0.5px), var(--bx-outer) var(--bx-c)), radial-gradient(circle at 0 0, transparent calc(var(--bx-c) - 0.5px), var(--bx-outer) var(--bx-c));
+  background-size: 100% var(--bx-bp), var(--bx-bp) var(--panel-h), var(--bx-bg) var(--panel-h), calc(100% - calc(var(--bx-bp) + var(--panel-w) + var(--bx-bg)) - var(--panel-w)) var(--panel-h), 100% calc(100% - var(--bx-bp) - var(--panel-h)), var(--bx-c) var(--bx-c), var(--bx-c) var(--bx-c), var(--bx-c) var(--bx-c), var(--bx-c) var(--bx-c), var(--bx-c) var(--bx-c), var(--bx-c) var(--bx-c), var(--bx-c) var(--bx-c), var(--bx-c) var(--bx-c);
+  background-position: 0 0, 0 var(--bx-bp), calc(var(--bx-bp) + var(--panel-w)) var(--bx-bp), calc(calc(var(--bx-bp) + var(--panel-w) + var(--bx-bg)) + var(--panel-w)) var(--bx-bp), 0 calc(var(--bx-bp) + var(--panel-h)), var(--bx-bp) var(--bx-bp), calc(var(--bx-bp) + var(--panel-w) - var(--bx-c)) var(--bx-bp), var(--bx-bp) calc(var(--bx-bp) + var(--panel-h) - var(--bx-c)), calc(var(--bx-bp) + var(--panel-w) - var(--bx-c)) calc(var(--bx-bp) + var(--panel-h) - var(--bx-c)), calc(var(--bx-bp) + var(--panel-w) + var(--bx-bg)) var(--bx-bp), calc(calc(var(--bx-bp) + var(--panel-w) + var(--bx-bg)) + var(--panel-w) - var(--bx-c)) var(--bx-bp), calc(var(--bx-bp) + var(--panel-w) + var(--bx-bg)) calc(var(--bx-bp) + var(--panel-h) - var(--bx-c)), calc(calc(var(--bx-bp) + var(--panel-w) + var(--bx-bg)) + var(--panel-w) - var(--bx-c)) calc(var(--bx-bp) + var(--panel-h) - var(--bx-c));
 }
 
 
@@ -1139,6 +1158,48 @@ body.inv-dragging {
 .bx-panel.bx-glovebox {
   justify-content: flex-start;
   padding-top: calc(var(--panel-pad) + var(--glovebox-extra-top));
+}
+
+/* Loe: GENEL KAP (tezgah/stash/motel/otel/market -- trunk ve glovebox HARIC, onlarin
+   kendi hizalamasi yukarida) — kullanici istegi (2026-10-13, ekran goruntusu):
+   "Tezgah" panelinin baslik + KG bari panelin ORTASINDA duruyordu; sag taraftaki
+   Envanter'in KG bariyla ayni seviyeye (panelin USTU) alindi.
+   Ayni satir/ayni yukseklik icin baslik Envanter'inki gibi TEK SATIR yapildi:
+   [ETIKET] [=== bar ===] [0/300kg]  (Envanter: [ikon 5.52 / 90 KG] [=== bar ===]).
+   Baslik sarmalayicisi display:contents -> p'ler ve bar ayni flex satirina girer.
+   (Grid'in kendisi ve slot hizasi DEGISMEZ; sadece ust blok.) */
+.bx-panel.bx-container:not(.bx-glovebox):not(.bx-trunk) {
+  justify-content: flex-start;
+
+  .inventory-grid-wrapper > div:first-child:not(.inventory-grid-container) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .inventory-grid-header-wrapper {
+      display: contents;
+    }
+
+    .weight-bar {
+      order: 1;
+      flex: 1;
+    }
+
+    .inventory-grid-header-wrapper p:nth-child(2) {
+      order: 2;
+    }
+  }
+
+  /* SLOTLAR TORPIDO (glovebox) ILE AYNI HIZADA (kullanici istegi 2026-10-13):
+     ilk slot satiri Fast Access'in ilk slot satiriyla (ve torpidonun ilk satiriyla)
+     AYNI Y konumunda baslar -> panelin ustunden 73px. Tek satirlik baslik artik
+     44px'te bitiyor (73-44 = 29px fark); bu fark grid'in ust boslugu olarak eklenir.
+     Sonraki satirlar ayni slot-sz+gap ile otomatik hizali kalir (2. satir 169px).
+     DOGRUDAN OLCULEN DEGER (DOM olcumu) -- baslik ya da Fast Access baslik
+     bolumu DEGISIRSE ELLE yeniden olculmeli (bkz. --glovebox-extra-top ayni yontem). */
+  .inventory-grid-wrapper > .inventory-grid-container {
+    margin-top: 29px;
+  }
 }
 
 /* Kap panelinde (torpido/bagaj/motel/otel) grid SABIT 6 sutun genisliginde ama
